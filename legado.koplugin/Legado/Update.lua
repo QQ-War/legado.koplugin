@@ -13,18 +13,18 @@ function M:_getUpdateSettings()
     return LuaSettings:open(H.getUserSettingsPath())
 end
 
-function M:getInstalledReleaseTag()
+function M:getInstalledReleaseStamp()
     local settings = self:_getUpdateSettings()
-    return settings and settings:readSetting("installed_release_tag")
+    return settings and settings:readSetting("installed_release_stamp")
 end
 
-function M:saveInstalledReleaseTag(tag)
-    if not H.is_str(tag) then
+function M:saveInstalledReleaseStamp(stamp)
+    if not H.is_str(stamp) then
         return
     end
     local settings = self:_getUpdateSettings()
     if settings then
-        settings:saveSetting("installed_release_tag", tag):flush()
+        settings:saveSetting("installed_release_stamp", stamp):flush()
     end
 end
 
@@ -53,11 +53,11 @@ function M:checkUpdate()
         }
     end
     local latest_release_version = latest_release_info.latest_version
-    local latest_release_tag = latest_release_info.tag_name
-    local installed_tag = self:getInstalledReleaseTag()
+    local latest_stamp = latest_release_info.updated_at or latest_release_info.published_at
+    local installed_stamp = self:getInstalledReleaseStamp()
     local should_update
-    if H.is_str(installed_tag) and H.is_str(latest_release_tag) then
-        should_update = installed_tag ~= latest_release_tag
+    if H.is_str(installed_stamp) and H.is_str(latest_stamp) then
+        should_update = installed_stamp ~= latest_stamp
     else
         should_update = (current_version ~= latest_release_version)
     end
@@ -77,8 +77,11 @@ function M:ota(ok_callback)
             if util.fileExists(zip_path) then
                 pcall(os.remove, zip_path)
             end
-            if response and response.info and response.info.tag_name then
-                self:saveInstalledReleaseTag(response.info.tag_name)
+            if response and response.info then
+                local stamp = response.info.updated_at or response.info.published_at
+                if H.is_str(stamp) then
+                    self:saveInstalledReleaseStamp(stamp)
+                end
             end
             if H.is_func(ok_callback) then
                 ok_callback()
@@ -148,13 +151,17 @@ function M:_getLatestReleaseInfo()
     local latest_version_tag = release_info.tag_name
     local assets = release_info.assets
     local normalized_latest_version = string.match(latest_version_tag, "v?([%d%.]+)") or latest_version_tag
-    local download_url = assets[1].browser_download_url
-    local asset_name = assets[1].name or "legado_plugin_update.zip"
+    local asset = assets[1]
+    local download_url = asset.browser_download_url
+    local asset_name = asset.name or "legado_plugin_update.zip"
+    local updated_at = asset.updated_at or release_info.published_at
     return {
         asset_name = asset_name,
         download_url = download_url,
         latest_version = normalized_latest_version,
-        tag_name = latest_version_tag
+        tag_name = latest_version_tag,
+        updated_at = updated_at,
+        published_at = release_info.published_at
     }
 end
 
