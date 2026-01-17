@@ -1,0 +1,75 @@
+name: Package KOReader Plugin
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - "legado.koplugin/**"
+      - ".github/workflows/package.yml"
+      - "README.md"
+
+concurrency:
+  group: package-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build plugin zip
+        run: |
+          set -e
+          mkdir -p dist/plugins
+          cp -R legado.koplugin dist/plugins/legado.koplugin
+          cd dist
+          zip -qr "legado.koplugin-${{ github.ref_name }}.zip" plugins
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: legado.koplugin-${{ github.ref_name }}
+          path: dist/legado.koplugin-${{ github.ref_name }}.zip
+
+      - name: Delete existing release assets
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = context.ref.replace('refs/heads/', '');
+            const tag = `ci-build-${branch}`;
+            const assetName = `legado.koplugin-${branch}.zip`;
+            try {
+              const release = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              });
+              for (const asset of release.data.assets) {
+                if (asset.name === assetName) {
+                  await github.rest.repos.deleteReleaseAsset({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    asset_id: asset.id,
+                  });
+                }
+              }
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+
+      - name: Upload package to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ci-build-${{ github.ref_name }}
+          name: CI Build (${{ github.ref_name }})
+          prerelease: true
+          files: dist/legado.koplugin-${{ github.ref_name }}.zip
