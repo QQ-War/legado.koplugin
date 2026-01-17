@@ -3,10 +3,30 @@ local util = require("util")
 local makeRequest = require("Legado.HttpRequest")
 local H = require("Legado/Helper")
 local MessageBox = require("Legado/MessageBox")
+local LuaSettings = require("luasettings")
 
 local M = {}
 
-local RELEASE_API = "https://api.github.com/repos/pengcw/legado.koplugin/releases/latest"
+local RELEASE_API = "https://api.github.com/repos/QQ-War/legado.koplugin/releases/tags/ci-build-main"
+
+function M:_getUpdateSettings()
+    return LuaSettings:open(H.getUserSettingsPath())
+end
+
+function M:getInstalledReleaseTag()
+    local settings = self:_getUpdateSettings()
+    return settings and settings:readSetting("installed_release_tag")
+end
+
+function M:saveInstalledReleaseTag(tag)
+    if not H.is_str(tag) then
+        return
+    end
+    local settings = self:_getUpdateSettings()
+    if settings then
+        settings:saveSetting("installed_release_tag", tag):flush()
+    end
+end
 
 function M:getPluginMetaInfo()
     local result, err_msg= H.require("_meta")
@@ -33,8 +53,16 @@ function M:checkUpdate()
         }
     end
     local latest_release_version = latest_release_info.latest_version
+    local latest_release_tag = latest_release_info.tag_name
+    local installed_tag = self:getInstalledReleaseTag()
+    local should_update
+    if H.is_str(installed_tag) and H.is_str(latest_release_tag) then
+        should_update = installed_tag ~= latest_release_tag
+    else
+        should_update = (current_version ~= latest_release_version)
+    end
     return {
-        state = (current_version ~= latest_release_version),
+        state = should_update,
         info = latest_release_info,
         release_version = latest_release_version,
         current_version = current_version
@@ -48,6 +76,9 @@ function M:ota(ok_callback)
             MessageBox:askForRestart("Updated. Restart KOReader for changes to apply.")
             if util.fileExists(zip_path) then
                 pcall(os.remove, zip_path)
+            end
+            if response and response.info and response.info.tag_name then
+                self:saveInstalledReleaseTag(response.info.tag_name)
             end
             if H.is_func(ok_callback) then
                 ok_callback()
@@ -116,13 +147,14 @@ function M:_getLatestReleaseInfo()
     local release_info = data
     local latest_version_tag = release_info.tag_name
     local assets = release_info.assets
-    local normalized_latest_version = string.match(latest_version_tag, "v?([%d%.]+)")
+    local normalized_latest_version = string.match(latest_version_tag, "v?([%d%.]+)") or latest_version_tag
     local download_url = assets[1].browser_download_url
     local asset_name = assets[1].name or "legado_plugin_update.zip"
     return {
         asset_name = asset_name,
         download_url = download_url,
-        latest_version = normalized_latest_version
+        latest_version = normalized_latest_version,
+        tag_name = latest_version_tag
     }
 end
 

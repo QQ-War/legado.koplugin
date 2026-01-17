@@ -468,7 +468,7 @@ function M:getProxyImageUrl(bookUrl, img_src)
         local url_path = string.sub(img_src, 8)
         res_img_src = table.concat({server_address, url_path})
     else
-        res_img_src = table.concat({server_address, '/proxypng?url=', util.urlEncode(res_img_src)})
+        res_img_src = table.concat({server_address, '/proxypng?url=', util.urlEncode(img_src)})
     end
     return res_img_src
 end
