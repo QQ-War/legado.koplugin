@@ -317,6 +317,20 @@ function LibraryView:openMenu(dimen)
         end,
         align = unified_align,
     }}, {{
+        text = string.format("%s 漫画代理下载  %s", Icons.FA_IMAGE,
+            (settings.manga_proxy_download and Icons.UNICODE_STAR or Icons.UNICODE_STAR_OUTLINE)),
+        callback = function()
+            UIManager:close(dialog)
+            local ok_msg = settings.manga_proxy_download and "关闭" or "开启"
+            settings.manga_proxy_download = not settings.manga_proxy_download or nil
+            Backend:HandleResponse(Backend:saveSettings(settings), function(data)
+                MessageBox:notice(string.format("代理下载已%s", ok_msg))
+            end, function(err_msg)
+                MessageBox:error('设置失败:', err_msg)
+            end)
+        end,
+        align = unified_align,
+    }}, {{
         text = string.format("%s 自动上传进度  %s", Icons.FA_CLOUD,
             (settings.sync_reading and Icons.UNICODE_STAR or Icons.UNICODE_STAR_OUTLINE)),
         callback = function()

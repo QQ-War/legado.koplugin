@@ -67,9 +67,19 @@ local function pGetUrlContent(options)
 
     if options and options.is_pic then
         local url = options.url
+        options.headers = options.headers or {}
+        
+        -- 1:1 模拟 iPhone Safari 请求头
+        options.headers["User-Agent"] = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1"
+        options.headers["Accept"] = "image/webp,image/avif,image/apng,image/svg+xml,image/*,*/*;q=0.8"
+        options.headers["Accept-Language"] = "zh-CN,zh;q=0.9,en;q=0.8"
+        options.headers["Connection"] = "keep-alive"
+        options.headers["Sec-Fetch-Mode"] = "no-cors"
+        options.headers["Sec-Fetch-Dest"] = "image"
+        options.headers["Sec-Fetch-Site"] = "cross-site"
+
         local referer = MangaRules.getRefererForUrl(url)
         if referer then
-            options.headers = options.headers or {}
             if not options.headers["Referer"] then
                 options.headers["Referer"] = referer
             end
@@ -78,6 +88,12 @@ local function pGetUrlContent(options)
                 for k, v in pairs(extra) do
                     options.headers[k] = v
                 end
+            end
+        elseif not options.headers["Referer"] then
+            -- 兜底：使用域名作为 Referer
+            local host = url:match("https?://([^/]+)")
+            if host then
+                options.headers["Referer"] = "https://" .. host .. "/"
             end
         end
     end
