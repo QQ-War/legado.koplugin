@@ -335,12 +335,13 @@ function M:getProxyCoverUrl(coverUrl)
     return table.concat({server_address, '/cover?path=', util.urlEncode(coverUrl)})
 end
 function M:getProxyImageUrl(bookUrl, img_src)
-    local res_img_src = img_src
+    local MangaRules = require("Legado/MangaRules")
+    local clean_img_src = MangaRules.sanitizeImageUrl(img_src)
     local width = Screen:getWidth() or 800
     local server_address = self.settings.server_address
     
     local res_img_src = table.concat({server_address, '/image?url=', util.urlEncode(bookUrl), '&path=',
-    util.urlEncode(img_src), '&width=', width})
+    util.urlEncode(clean_img_src), '&width=', width})
 
     return res_img_src
 end

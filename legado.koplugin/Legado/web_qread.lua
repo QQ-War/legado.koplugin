@@ -462,15 +462,15 @@ function M:getProxyCoverUrl(coverUrl)
     return res_cover_src
 end
 function M:getProxyImageUrl(bookUrl, img_src)
-    local res_img_src
+    local MangaRules = require("Legado/MangaRules")
+    local clean_img_src = MangaRules.sanitizeImageUrl(img_src)
     local server_address = self.settings.server_address
-    if string.sub(img_src, 1, 8) == "baseurl/" then
-        local url_path = string.sub(img_src, 8)
-        res_img_src = table.concat({server_address, url_path})
+    if string.sub(clean_img_src, 1, 8) == "baseurl/" then
+        local url_path = string.sub(clean_img_src, 8)
+        return table.concat({server_address, url_path})
     else
-        res_img_src = table.concat({server_address, '/proxypng?url=', util.urlEncode(img_src)})
+        return table.concat({server_address, '/proxypng?url=', util.urlEncode(clean_img_src)})
     end
-    return res_img_src
 end
 
 function M:searchBookMulti(options, callback)

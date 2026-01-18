@@ -96,4 +96,11 @@ function M.getAbsoluteUrl(img_src, bookUrl)
     return socket_url.absolute(bookUrl, img_src)
 end
 
+function M.sanitizeImageUrl(url)
+    if not url or type(url) ~= "string" then return url end
+    -- 处理 Legado 格式: url,{...} 或 url,%7B...}
+    local clean_url = url:gsub(",%s*[{%%].*$", "")
+    return clean_url
+end
+
 return M
