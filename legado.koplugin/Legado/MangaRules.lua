@@ -98,8 +98,15 @@ end
 
 function M.sanitizeImageUrl(url)
     if not url or type(url) ~= "string" then return url end
-    -- 处理 Legado 格式: url,{...} 或 url,%7B...}
+    -- 1. 处理 Legado 格式: url,{...} 或 url,%7B...}
     local clean_url = url:gsub(",%s*[{%%].*$", "")
+    
+    -- 2. 域名纠错 (Normalization)
+    -- bzmh.net -> bzcdn.net (包子漫画过时域名修复)
+    if clean_url:find("bzmh.net", 1, true) then
+        clean_url = clean_url:gsub("bzmh%.net", "bzcdn.net")
+    end
+    
     return clean_url
 end
 
