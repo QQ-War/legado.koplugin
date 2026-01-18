@@ -48,6 +48,7 @@ function M:checkUpdate()
     local current_version = self:getCurrentPluginVersion()
     local latest_release_info = self:_getLatestReleaseInfo()
     if not (current_version and H.is_tbl(latest_release_info) and latest_release_info.latest_version) then
+        logger.warn("checkUpdate: Failed to get version info", current_version, latest_release_info)
         return {
             error = "获取版本信息失败"
         }
@@ -60,6 +61,10 @@ function M:checkUpdate()
     -- Use the version we fetched (either from tag or from remote _meta.lua)
     local is_standard_version = string.match(latest_release_version, "^[%d%.]+$")
 
+    logger.info(string.format("checkUpdate: cur=%s, latest=%s, is_std=%s, i_stamp=%s, l_stamp=%s", 
+        tostring(current_version), tostring(latest_release_version), tostring(is_standard_version), 
+        tostring(installed_stamp), tostring(latest_stamp)))
+
     if H.is_str(installed_stamp) and H.is_str(latest_stamp) then
         -- If we have an OTA record, trust the timestamp
         should_update = installed_stamp ~= latest_stamp
@@ -70,6 +75,8 @@ function M:checkUpdate()
         -- Fallback for rolling tags where we couldn't get a version number
         should_update = (current_version ~= latest_release_version)
     end
+    
+    logger.info("checkUpdate: result should_update =", should_update)
 
     return {
         state = should_update,
