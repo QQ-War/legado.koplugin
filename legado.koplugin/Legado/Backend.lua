@@ -66,6 +66,8 @@ local function pGetUrlContent(options)
     end
 
     if options and options.is_pic then
+        -- 核心修复：无论直连还是代理，发起请求前统一清洗 URL 和纠错域名
+        options.url = MangaRules.sanitizeImageUrl(options.url)
         local url = options.url
         options.headers = options.headers or {}
         
