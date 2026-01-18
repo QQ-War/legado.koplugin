@@ -48,7 +48,6 @@ function M:checkUpdate()
     local current_version = self:getCurrentPluginVersion()
     local latest_release_info = self:_getLatestReleaseInfo()
     if not (current_version and H.is_tbl(latest_release_info) and latest_release_info.latest_version) then
-        logger.warn("checkUpdate: Failed to get version info", current_version, latest_release_info)
         return {
             error = "获取版本信息失败"
         }
@@ -58,25 +57,19 @@ function M:checkUpdate()
     local installed_stamp = self:getInstalledReleaseStamp()
     local should_update = false
 
-    -- Use the version we fetched (either from tag or from remote _meta.lua)
+    -- Use the version we fetched
     local is_standard_version = string.match(latest_release_version, "^[%d%.]+$")
 
-    logger.info(string.format("checkUpdate: cur=%s, latest=%s, is_std=%s, i_stamp=%s, l_stamp=%s", 
-        tostring(current_version), tostring(latest_release_version), tostring(is_standard_version), 
-        tostring(installed_stamp), tostring(latest_stamp)))
-
     if H.is_str(installed_stamp) and H.is_str(latest_stamp) then
-        -- If we have an OTA record, trust the timestamp
+        -- If we have an OTA record, trust the timestamp string from GitHub API
         should_update = installed_stamp ~= latest_stamp
     elseif is_standard_version then
-        -- If no OTA record but we got a valid version number, compare versions
+        -- Compare version strings (which now include timestamps for CI builds)
         should_update = (current_version ~= latest_release_version)
     else
-        -- Fallback for rolling tags where we couldn't get a version number
+        -- Last resort fallback
         should_update = (current_version ~= latest_release_version)
     end
-    
-    logger.info("checkUpdate: result should_update =", should_update)
 
     return {
         state = should_update,
@@ -171,20 +164,9 @@ function M:_getLatestReleaseInfo()
     
     -- Try to get version from release body (injected by GitHub Action)
     if not normalized_latest_version and release_info.body then
-        normalized_latest_version = string.match(release_info.body, "Latest version:%s*([%d%.]+)")
+        normalized_latest_version = string.match(release_info.body, "Latest version:[%s]*([%d%.]+)")
     end
 
-    -- For rolling tags like ci-build-main, try to get version from _meta.lua as fallback
-    if not normalized_latest_version and latest_version_tag == "ci-build-main" then
-        local repo_path = RELEASE_API:match("repos/([^/]+/[^/]+)")
-        if repo_path then
-            local meta_url = string.format("https://raw.githubusercontent.com/%s/main/legado.koplugin/_meta.lua", repo_path)
-            local m_ok, m_err = makeRequest({ url = meta_url, timeout = 5, maxtime = 10 })
-            if m_ok and H.is_tbl(m_err) and m_err.data then
-                normalized_latest_version = string.match(m_err.data, 'version%s*=%s*["\']([%d%.]+)["\']')
-            end
-        end
-    end
     normalized_latest_version = normalized_latest_version or latest_version_tag
 
     local asset = assets[1]
