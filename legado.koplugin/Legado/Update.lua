@@ -55,12 +55,20 @@ function M:checkUpdate()
     local latest_release_version = latest_release_info.latest_version
     local latest_stamp = latest_release_info.updated_at or latest_release_info.published_at
     local installed_stamp = self:getInstalledReleaseStamp()
-    local should_update
+    local should_update = false
+
+    local latest_v_norm = string.match(latest_release_info.tag_name or "", "v?([%d%.]+)")
+
     if H.is_str(installed_stamp) and H.is_str(latest_stamp) then
         should_update = installed_stamp ~= latest_stamp
+    elseif latest_v_norm then
+        should_update = (current_version ~= latest_v_norm)
     else
-        should_update = (current_version ~= latest_release_version)
+        -- For non-version tags (like ci-build-main) and no previous OTA stamp
+        -- We don't prompt automatically to avoid annoying manual install users
+        should_update = false
     end
+
     return {
         state = should_update,
         info = latest_release_info,
@@ -150,7 +158,21 @@ function M:_getLatestReleaseInfo()
     local release_info = data
     local latest_version_tag = release_info.tag_name
     local assets = release_info.assets
-    local normalized_latest_version = string.match(latest_version_tag, "v?([%d%.]+)") or latest_version_tag
+    local normalized_latest_version = string.match(latest_version_tag, "v?([%d%.]+)")
+    
+    -- For rolling tags like ci-build-main, try to get version from _meta.lua
+    if not normalized_latest_version and latest_version_tag == "ci-build-main" then
+        local repo_path = RELEASE_API:match("repos/([^/]+/[^/]+)")
+        if repo_path then
+            local meta_url = string.format("https://raw.githubusercontent.com/%s/main/legado.koplugin/_meta.lua", repo_path)
+            local m_ok, m_err = makeRequest({ url = meta_url, timeout = 5, maxtime = 10 })
+            if m_ok and H.is_tbl(m_err) and m_err.data then
+                normalized_latest_version = string.match(m_err.data, 'version%s*=%s*["\']([%d%.]+)["\']')
+            end
+        end
+    end
+    normalized_latest_version = normalized_latest_version or latest_version_tag
+
     local asset = assets[1]
     local download_url = asset.browser_download_url
     local asset_name = asset.name or "legado_plugin_update.zip"

@@ -80,10 +80,20 @@ local function pDownload_CreateCBZ(chapter, filePath, img_sources)
 
     if util.fileExists(cbz_path_tmp) then
         -- 仅作为最后一道防线，避免多个进程同时写入同一个文件
-        -- 如果文件已存在超过 60 秒，则认为是一个过期的下载任务产生的残留文件
+        -- 如果文件已存在超过 600 秒，则认为是一个过期的下载任务产生的残留文件
         local stats = util.getFileStats(cbz_path_tmp)
-        if stats and os.time() - stats.mtime < 60 then
-            error("Other threads downloading, cancelled")
+        if stats and os.time() - stats.mtime < 600 then
+            -- 尝试等待一段时间，看另一个进程是否能完成
+            local socket = require("socket")
+            for i = 1, 10 do
+                if not util.fileExists(cbz_path_tmp) then break end
+                if util.fileExists(filePath) then return filePath end
+                socket.select(nil, nil, 1)
+            end
+            if util.fileExists(filePath) then return filePath end
+            if util.fileExists(cbz_path_tmp) then
+                error("Other threads downloading, cancelled")
+            end
         else
             util.removeFile(cbz_path_tmp)
         end
