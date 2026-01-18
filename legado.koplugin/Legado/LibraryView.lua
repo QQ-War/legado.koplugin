@@ -896,6 +896,19 @@ function LibraryView:initializeRegisterEvent(parent_ref)
                 return
             end
             -- logger.dbg("Legado: Saving reader settings...")
+            local library_obj = library_ref:getInstance()
+
+            -- Sync progress (Local only for power saving during reading)
+            local chapter = library_obj:readingChapter()
+            if chapter and self.ui and self.ui.getReadingProgress then
+                local progress = self.ui:getReadingProgress()
+                if progress and progress.percent then
+                    chapter.durChapterPos = progress.percent / 100
+                    -- Just update local DB, no network request here
+                    Backend:updateLocalBookProgress(chapter)
+                end
+            end
+
             if self.ui.doc_settings and type(self.ui.doc_settings.data) == 'table' then
                 local persisted_settings_keys = require("Legado/BookMetaData")
                 local library_obj = library_ref:getInstance()
@@ -979,6 +992,21 @@ function LibraryView:initializeRegisterEvent(parent_ref)
     function parent_ref:onCloseDocument()
         if is_legado_path(nil, self.ui) then
             local library_obj = library_ref:getInstance()
+
+            -- Final sync on close
+            local chapter = library_obj:readingChapter()
+            if chapter and self.ui and self.ui.getReadingProgress then
+                local progress = self.ui:getReadingProgress()
+                if progress and progress.percent then
+                    chapter.durChapterPos = progress.percent / 100
+                    Backend:updateLocalBookProgress(chapter)
+                    local settings = Backend:getSettings()
+                    if settings.sync_reading == true and NetworkMgr:isConnected() then
+                        Backend:saveBookProgressAsync(chapter)
+                    end
+                end
+            end
+
             if library_obj then library_obj:readerUiVisible(false) end
             if not self.patches_ok then
                 require("readhistory"):removeItemByPath(self.document.file)
@@ -1004,6 +1032,13 @@ function LibraryView:initializeRegisterEvent(parent_ref)
         if is_legado_path(nil, self.ui) then
             local library_obj = library_ref:getInstance()
             if library_obj then
+                -- Sync 100% progress before next chapter
+                local chapter = library_obj:readingChapter()
+                if chapter then
+                    chapter.durChapterPos = 1.0
+                    Backend:saveBookProgressAsync(chapter)
+                end
+
                 local chapter_direction = "next"
                 library_obj:ReaderUIEventCallback(chapter_direction)
             else
@@ -1017,6 +1052,13 @@ function LibraryView:initializeRegisterEvent(parent_ref)
         if is_legado_path(nil, self.ui) then
             local library_obj = library_ref:getInstance()
             if library_obj then
+                -- Sync 0% progress before prev chapter
+                local chapter = library_obj:readingChapter()
+                if chapter then
+                    chapter.durChapterPos = 0.0
+                    Backend:saveBookProgressAsync(chapter)
+                end
+
                 local chapter_direction = "prev"
                 library_obj:ReaderUIEventCallback(chapter_direction)
             else

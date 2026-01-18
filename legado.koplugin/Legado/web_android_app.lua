@@ -316,7 +316,7 @@ function M:saveBookProgress(chapter, callback)
       return self.client:saveBookProgress({
           name = chapter.name,
           author = chapter.author or '',
-          durChapterPos = 0,
+          durChapterPos = chapter.durChapterPos or 0,
           durChapterIndex = chapters_index,
           durChapterTime = time.to_ms(time.now()),
           durChapterTitle = chapter.title or '',

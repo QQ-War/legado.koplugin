@@ -440,7 +440,7 @@ function M:saveBookProgress(chapter, callback)
             index = chapters_index,
             url = bookUrl,
             title = title,
-            pos = 0, --pos 0.2
+            pos = chapter.durChapterPos or 0, --pos 0.2
         })
     end, callback, {
         timeouts = {3, 5}

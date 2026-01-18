@@ -1979,13 +1979,40 @@ function M:refreshBookContentAsync(chapter)
     end)
 end
 
+function M:updateLocalBookProgress(chapter)
+    if not (H.is_tbl(chapter) and H.is_str(chapter.book_cache_id) and H.is_num(chapter.chapters_index)) then
+        return
+    end
+    local bookShelfId = self:getCurrentBookShelfId()
+    if not bookShelfId then return end
+
+    local update_data = {
+        durChapterIndex = chapter.chapters_index,
+        durChapterPos = chapter.durChapterPos or 0,
+        durChapterTime = { _set = "= CAST(ROUND((julianday('now') - 2440587.5) * 86400000) AS INTEGER)" }
+    }
+    if chapter.title then
+        update_data.durChapterTitle = chapter.title
+    end
+
+    pcall(function()
+        self.dbManager:transaction(function()
+            return self:dynamicUpdate('books', update_data, {
+                bookCacheId = chapter.book_cache_id,
+                bookShelfId = bookShelfId
+            })
+        end)()
+    end)
+end
+
 function M:saveBookProgressAsync(chapter)
+    self:updateLocalBookProgress(chapter)
     self:launchProcess(function()
             return self:saveBookProgress(chapter)
         end, function(status, response, r2)
         if not (H.is_tbl(response) and response.type == 'SUCCESS') then
             -- local message = type(response) == 'table' and response.message or "阅读进度自动上传失败"
-            self:_show_notice("自动上传进度失败")
+            -- self:_show_notice("自动上传进度失败")
         end
     end)
 end
