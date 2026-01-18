@@ -79,7 +79,10 @@ local function pDownload_CreateCBZ(chapter, filePath, img_sources)
     local cbz_path_tmp = filePath .. '.downloading'
 
     if util.fileExists(cbz_path_tmp) then
-        if M:getBackgroundTaskInfo(chapter) ~= false then
+        -- 仅作为最后一道防线，避免多个进程同时写入同一个文件
+        -- 如果文件已存在超过 60 秒，则认为是一个过期的下载任务产生的残留文件
+        local stats = util.getFileStats(cbz_path_tmp)
+        if stats and os.time() - stats.mtime < 60 then
             error("Other threads downloading, cancelled")
         else
             util.removeFile(cbz_path_tmp)

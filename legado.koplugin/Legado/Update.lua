@@ -70,18 +70,18 @@ function M:checkUpdate()
 end
 
 function M:ota(ok_callback)
-    local install_ota = function(zip_path)
+    local install_ota = function(zip_path, release_info)
         local update_response = self:_installUpdate(zip_path)
         if update_response == true then
-            MessageBox:askForRestart("Updated. Restart KOReader for changes to apply.")
-            if util.fileExists(zip_path) then
-                pcall(os.remove, zip_path)
-            end
-            if response and response.info then
-                local stamp = response.info.updated_at or response.info.published_at
+            if H.is_tbl(release_info) then
+                local stamp = release_info.updated_at or release_info.published_at
                 if H.is_str(stamp) then
                     self:saveInstalledReleaseStamp(stamp)
                 end
+            end
+            MessageBox:askForRestart("Updated. Restart KOReader for changes to apply.")
+            if util.fileExists(zip_path) then
+                pcall(os.remove, zip_path)
             end
             if H.is_func(ok_callback) then
                 ok_callback()
@@ -104,7 +104,7 @@ function M:ota(ok_callback)
                         return self:_downloadUpdate(response.info)
                     end, function(state, down_response)
                         if state == true and down_response and down_response.path then
-                            install_ota(down_response.path)
+                            install_ota(down_response.path, response.info)
                         else
                             local err_msg = (H.is_tbl(down_response) and down_response.error) or ""
                             MessageBox:error("下载失败，请重试:" .. tostring(err_msg))
