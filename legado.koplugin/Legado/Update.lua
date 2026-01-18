@@ -57,16 +57,18 @@ function M:checkUpdate()
     local installed_stamp = self:getInstalledReleaseStamp()
     local should_update = false
 
-    local latest_v_norm = string.match(latest_release_info.tag_name or "", "v?([%d%.]+)")
+    -- Use the version we fetched (either from tag or from remote _meta.lua)
+    local is_standard_version = string.match(latest_release_version, "^[%d%.]+$")
 
     if H.is_str(installed_stamp) and H.is_str(latest_stamp) then
+        -- If we have an OTA record, trust the timestamp
         should_update = installed_stamp ~= latest_stamp
-    elseif latest_v_norm then
-        should_update = (current_version ~= latest_v_norm)
+    elseif is_standard_version then
+        -- If no OTA record but we got a valid version number, compare versions
+        should_update = (current_version ~= latest_release_version)
     else
-        -- For non-version tags (like ci-build-main) and no previous OTA stamp
-        -- We don't prompt automatically to avoid annoying manual install users
-        should_update = false
+        -- Fallback for rolling tags where we couldn't get a version number
+        should_update = (current_version ~= latest_release_version)
     end
 
     return {
