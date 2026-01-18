@@ -85,7 +85,7 @@ local function pGetUrlContent(options)
     return M.httpReq(options, true)
 end
 
-local function pDownload_CreateCBZ(chapter, filePath, img_sources)
+local function pDownload_CreateCBZ(self, chapter, filePath, img_sources, bookUrl)
 
     dbg.v('CreateCBZ strat:')
 
@@ -94,6 +94,8 @@ local function pDownload_CreateCBZ(chapter, filePath, img_sources)
     end
 
     local is_convertToGrayscale = false
+    local settings = self:getSettings()
+    local prefer_local = settings.prefer_local_download ~= false
 
     local cbz_path_tmp = filePath .. '.downloading'
 
@@ -154,12 +156,29 @@ local function pDownload_CreateCBZ(chapter, filePath, img_sources)
     for i, img_src in ipairs(img_sources) do
 
         dbg.v('Download_Image start', i, img_src)
-        local status, err = pGetUrlContent({
+        
+        local status, err
+        -- Step 1: Try local download if preferred
+        if prefer_local then
+            status, err = pGetUrlContent({
                 url = img_src,
                 timeout = 15,
                 maxtime = 60,
                 is_pic = true,
-        })
+            })
+        end
+
+        -- Step 2: Fallback to server proxy if local failed or was skipped
+        if not status then
+            local proxy_url = self:getProxyImageUrl(bookUrl, img_src)
+            dbg.v('Local download failed or skipped, trying proxy:', proxy_url)
+            status, err = pGetUrlContent({
+                url = proxy_url,
+                timeout = 20,
+                maxtime = 80,
+                is_pic = false, -- Proxy URLs usually don't need the local referer headers
+            })
+        end
 
         if status and H.is_tbl(err) and err['data'] then
 
@@ -274,6 +293,7 @@ function M:initialize()
                 disable_browser = nil,
                 sync_reading = nil,
                 open_at_last_read = nil,
+                prefer_local_download = true,
         }
         self.settings_data:flush()
     end
@@ -988,12 +1008,27 @@ function M:_AnalyzingChapters(chapter, content, filePath)
             -- 一张图片就不打包cbz了
             if #img_sources == 1 then
                 local res_url = img_sources[1]
-                local status, err = pGetUrlContent({
+                local settings = self:getSettings()
+                local status, err
+                
+                if settings.prefer_local_download ~= false then
+                    status, err = pGetUrlContent({
                         url = res_url,
                         timeout = 15,
                         maxtime = 60,
                         is_pic = true,
-                })
+                    })
+                end
+
+                if not status then
+                    local proxy_url = self:getProxyImageUrl(bookUrl, res_url)
+                    status, err = pGetUrlContent({
+                        url = proxy_url,
+                        timeout = 20,
+                        maxtime = 80,
+                    })
+                end
+
                 if not status then
                     error('请求错误，' .. tostring(err))
                 end
@@ -1011,7 +1046,7 @@ function M:_AnalyzingChapters(chapter, content, filePath)
                 return chapter_writeToFile(chapter, filePath, err['data'])
             else
                 filePath = filePath .. '.cbz'
-                local status, err = H.pcall(pDownload_CreateCBZ, chapter, filePath, img_sources)
+                local status, err = H.pcall(pDownload_CreateCBZ, self, chapter, filePath, img_sources, bookUrl)
 
                 if not status then
                     error('CreateCBZ err: ' .. tostring(err))
@@ -1380,12 +1415,13 @@ function M:getPorxyPicUrls(bookUrl, content)
         return {}
     end
 
-    local new_porxy_picurls = {}
+    local MangaRules = require("Legado/MangaRules")
+    local new_picurls = {}
     for i, img_src in ipairs(picUrls) do
-        local new_url = self:getProxyImageUrl(bookUrl, img_src)
-        table.insert(new_porxy_picurls, new_url)
+        local abs_url = MangaRules.getAbsoluteUrl(img_src, bookUrl)
+        table.insert(new_picurls, abs_url)
     end
-    return new_porxy_picurls
+    return new_picurls
 end
 
 function M:pDownload_Image(img_src, timeout)

@@ -87,4 +87,13 @@ function M.getExtraHeadersForUrl(url)
     return nil
 end
 
+function M.getAbsoluteUrl(img_src, bookUrl)
+    if not img_src or img_src == "" then return img_src end
+    if img_src:match("^https?://") then return img_src end
+    if img_src:match("^//") then return "https:" .. img_src end
+    
+    local socket_url = require("socket.url")
+    return socket_url.absolute(bookUrl, img_src)
+end
+
 return M
