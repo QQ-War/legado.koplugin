@@ -26,6 +26,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Inject version with timestamp
+        id: version_info
+        run: |
+          # Get current version from _meta.lua
+          CURRENT_VERSION=$(grep -oP 'version\s*=\s*"\K[^"]+' legado.koplugin/legado.koplugin/_meta.lua)
+          # Create new version with timestamp (Beijing Time)
+          TIMESTAMP=$(TZ='Asia/Shanghai' date +'%Y%m%d%H%M')
+          NEW_VERSION="${CURRENT_VERSION}.${TIMESTAMP}"
+          echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          # Replace version in the source before zipping
+          sed -i "s/version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" legado.koplugin/legado.koplugin/_meta.lua
+          echo "Updated version to: $NEW_VERSION"
+
       - name: Build plugin zip
         run: |
           set -e
@@ -71,5 +84,6 @@ jobs:
         with:
           tag_name: ci-build-${{ github.ref_name }}
           name: CI Build (${{ github.ref_name }})
+          body: "Latest version: ${{ steps.version_info.outputs.NEW_VERSION }}"
           prerelease: true
           files: dist/legado.koplugin-${{ github.ref_name }}.zip

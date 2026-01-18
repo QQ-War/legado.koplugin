@@ -162,7 +162,12 @@ function M:_getLatestReleaseInfo()
     local assets = release_info.assets
     local normalized_latest_version = string.match(latest_version_tag, "v?([%d%.]+)")
     
-    -- For rolling tags like ci-build-main, try to get version from _meta.lua
+    -- Try to get version from release body (injected by GitHub Action)
+    if not normalized_latest_version and release_info.body then
+        normalized_latest_version = string.match(release_info.body, "Latest version:%s*([%d%.]+)")
+    end
+
+    -- For rolling tags like ci-build-main, try to get version from _meta.lua as fallback
     if not normalized_latest_version and latest_version_tag == "ci-build-main" then
         local repo_path = RELEASE_API:match("repos/([^/]+/[^/]+)")
         if repo_path then
