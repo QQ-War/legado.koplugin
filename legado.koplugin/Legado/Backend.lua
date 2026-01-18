@@ -95,7 +95,7 @@ local function pDownload_CreateCBZ(self, chapter, filePath, img_sources, bookUrl
 
     local is_convertToGrayscale = false
     local settings = self:getSettings()
-    local prefer_local = settings.prefer_local_download ~= false
+    local use_proxy = settings.manga_proxy_download == true
 
     local cbz_path_tmp = filePath .. '.downloading'
 
@@ -104,8 +104,8 @@ local function pDownload_CreateCBZ(self, chapter, filePath, img_sources, bookUrl
         -- 如果文件已存在超过 600 秒，则认为是一个过期的下载任务产生的残留文件
         local lfs = require("libs/libkoreader-lfs")
         local attributes = lfs.attributes(cbz_path_tmp)
-        local mtime = attributes and attributes.modification or 0
-        if os.time() - mtime < 600 then
+        local m_mtime = attributes and attributes.modification or 0
+        if os.time() - m_mtime < 600 then
             -- 尝试等待一段时间，看另一个进程是否能完成
             local socket = require("socket")
             for i = 1, 10 do
@@ -158,25 +158,32 @@ local function pDownload_CreateCBZ(self, chapter, filePath, img_sources, bookUrl
         dbg.v('Download_Image start', i, img_src)
         
         local status, err
-        -- Step 1: Try local download if preferred
-        if prefer_local then
+        if use_proxy then
+            -- Mode 1: Proxy first, fallback to local
+            local proxy_url = self:getProxyImageUrl(bookUrl, img_src)
+            dbg.v('Trying proxy download:', proxy_url)
+            status, err = pGetUrlContent({
+                url = proxy_url,
+                timeout = 20,
+                maxtime = 80,
+            })
+            if not status then
+                dbg.v('Proxy failed, trying local fallback:', img_src)
+                status, err = pGetUrlContent({
+                    url = img_src,
+                    timeout = 15,
+                    maxtime = 60,
+                    is_pic = true,
+                })
+            end
+        else
+            -- Mode 2: Strictly local download
+            dbg.v('Trying strictly local download:', img_src)
             status, err = pGetUrlContent({
                 url = img_src,
                 timeout = 15,
                 maxtime = 60,
                 is_pic = true,
-            })
-        end
-
-        -- Step 2: Fallback to server proxy if local failed or was skipped
-        if not status then
-            local proxy_url = self:getProxyImageUrl(bookUrl, img_src)
-            dbg.v('Local download failed or skipped, trying proxy:', proxy_url)
-            status, err = pGetUrlContent({
-                url = proxy_url,
-                timeout = 20,
-                maxtime = 80,
-                is_pic = false, -- Proxy URLs usually don't need the local referer headers
             })
         end
 
@@ -293,7 +300,7 @@ function M:initialize()
                 disable_browser = nil,
                 sync_reading = nil,
                 open_at_last_read = nil,
-                prefer_local_download = true,
+                manga_proxy_download = false,
         }
         self.settings_data:flush()
     end
@@ -1009,23 +1016,32 @@ function M:_AnalyzingChapters(chapter, content, filePath)
             if #img_sources == 1 then
                 local res_url = img_sources[1]
                 local settings = self:getSettings()
+                local use_proxy = settings.manga_proxy_download == true
                 local status, err
                 
-                if settings.prefer_local_download ~= false then
-                    status, err = pGetUrlContent({
-                        url = res_url,
-                        timeout = 15,
-                        maxtime = 60,
-                        is_pic = true,
-                    })
-                end
-
-                if not status then
+                if use_proxy then
+                    -- Mode 1: Proxy first with local fallback
                     local proxy_url = self:getProxyImageUrl(bookUrl, res_url)
                     status, err = pGetUrlContent({
                         url = proxy_url,
                         timeout = 20,
                         maxtime = 80,
+                    })
+                    if not status then
+                        status, err = pGetUrlContent({
+                            url = res_url,
+                            timeout = 15,
+                            maxtime = 60,
+                            is_pic = true,
+                        })
+                    end
+                else
+                    -- Mode 2: Strictly local
+                    status, err = pGetUrlContent({
+                        url = res_url,
+                        timeout = 15,
+                        maxtime = 60,
+                        is_pic = true,
                     })
                 end
 
