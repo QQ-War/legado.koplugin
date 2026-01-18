@@ -11,6 +11,7 @@ local time = require("ui/time")
 
 local UIManager = require("ui/uimanager")
 local H = require("Legado/Helper")
+local MangaRules = require("Legado/MangaRules")
 
 -- 太旧版本缺少这个函数
 if not dbg.log then
@@ -63,6 +64,24 @@ local function pGetUrlContent(options)
     if not M.httpReq then 
         M.httpReq = require("Legado.HttpRequest")
     end
+
+    if options and options.is_pic then
+        local url = options.url
+        local referer = MangaRules.getRefererForUrl(url)
+        if referer then
+            options.headers = options.headers or {}
+            if not options.headers["Referer"] then
+                options.headers["Referer"] = referer
+            end
+            local extra = MangaRules.getExtraHeadersForUrl(url)
+            if extra then
+                for k, v in pairs(extra) do
+                    options.headers[k] = v
+                end
+            end
+        end
+    end
+
     return M.httpReq(options, true)
 end
 
@@ -1333,12 +1352,22 @@ local function get_img_src(html)
     end
 
     local img_sources = {}
-    -- local img_pattern = "<img[^>]*src%s*=%s*([\"']?)([^%s\"'>]+)%1[^>]*>"
-    local img_pattern = '<img[^>]-src%s*=%s*["\']?([^"\'>%s]+)["\']?[^>]*>'
+    local seen = {}
 
-    for src in html:gmatch(img_pattern) do
-        if src and src ~= "" then
+    local function add_match(src)
+        if src and src ~= "" and not seen[src] then
             table.insert(img_sources, src)
+            seen[src] = true
+        end
+    end
+
+    -- Support various lazy loading attributes used by manga sites
+    local attributes = {"data%-original", "data%-src", "data%-lazy", "data%-echo", "data%-img", "data%-url", "src"}
+    
+    for _, attr in ipairs(attributes) do
+        local pattern = attr .. '%s*=%s*["\']?([^"\'>%s]+)["\']?'
+        for src in html:gmatch(pattern) do
+            add_match(src)
         end
     end
 
