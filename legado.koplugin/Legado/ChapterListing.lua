@@ -437,7 +437,7 @@ function ChapterListing:syncProgressShow(chapter)
                 }
             end
         end
-        return Backend:refreshLibraryCache()
+        return Backend:refreshLibraryCache(nil, true)
     end, function(state, response)
         if state == true then
             Backend:HandleResponse(response, function(data)

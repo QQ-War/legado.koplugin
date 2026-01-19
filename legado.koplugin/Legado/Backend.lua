@@ -385,7 +385,7 @@ function M:isBookTypeComic(book_cache_id)
     return H.is_tbl(chapter) and chapter.cacheExt == "cbz" or false
 end
 
-function M:refreshLibraryCache(last_refresh_time)
+function M:refreshLibraryCache(last_refresh_time, isUpdate)
     if last_refresh_time and os.time() - last_refresh_time < 2 then
         dbg.v('ui_refresh_time prevent refreshChaptersCache')
         return wrap_response(nil, '处理中')
@@ -393,7 +393,7 @@ function M:refreshLibraryCache(last_refresh_time)
     local ret, err_msg = self.apiClient:getBookshelf(function(response)
         local bookShelfId = self:getCurrentBookShelfId()
         local status, err = pcall(function()
-            return self.dbManager:upsertBooks(bookShelfId, response.data)
+            return self.dbManager:upsertBooks(bookShelfId, response.data, isUpdate)
         end)
         if not status then
             dbg.log('refreshLibraryCache数据写入', err)

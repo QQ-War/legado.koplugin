@@ -492,6 +492,16 @@ function M:safe_rows(sql, params, fetch_size)
     end
 end
 
+function M:getBooksCount(bookShelfId)
+    if not H.is_str(bookShelfId) then return 0 end
+    local sql_stmt = "SELECT count(*) FROM books WHERE bookShelfId = ? AND isEnabled = 1;"
+    local result = self:execute(sql_stmt, {bookShelfId})
+    if result and result[1] and result[1][1] then
+        return tonumber(result[1][1])
+    end
+    return 0
+end
+
 function M:upsertBooks(bookShelfId, legado_data, isUpdate)
     if not H.is_str(bookShelfId) or not H.is_tbl(legado_data) then
         dbg.log('BookInfoDB:upsertBooks Incorrect input parameters')
@@ -554,7 +564,13 @@ ON CONFLICT(bookShelfId, bookCacheId) DO UPDATE SET
 
     if #batch_data > 0 then
         if isUpdate ~= true then
-            self:disableAllBookShelves()
+            local current_count = self:getBooksCount(bookShelfId)
+            -- 保护：如果返回书籍数量显著少于本地（且本地有一定基数），则不进行全量禁用
+            if current_count > 8 and #batch_data < (current_count / 2) then
+                logger.warn("Sync returned significantly fewer books, skipping disable step to protect local data. Received:", #batch_data, "Local:", current_count)
+            else
+                self:disableAllBookShelves(bookShelfId)
+            end
         end
         self:batch_insert(sql_stmt, batch_data, 0)
     end
@@ -1214,11 +1230,15 @@ function M:clearBooks(bookShelfId)
         return false
     end
 
-    self:dynamicUpdate('books', {
-        isEnabled = 0
+    self:dynamicUpdate('chapters', {
+        cacheFilePath = self.nil_object(),
+        content = self.nil_object(),
+        isRead = 0
     }, {
-        bookShelfId = bookShelfId
-    })
+        bookCacheId = {
+            _where = "IN (SELECT bookCacheId FROM books WHERE bookShelfId = ?)"
+        }
+    }, { bookShelfId })
     return true
 end
 
@@ -1230,13 +1250,6 @@ function M:clearBook(bookShelfId, book_cache_id)
     end
 
     return self:transaction(function()
-        self:dynamicUpdate('books', {
-            isEnabled = 0
-        }, {
-            bookShelfId = bookShelfId,
-            bookCacheId = book_cache_id
-        })
-
         self:dynamicUpdate('chapters', {
             cacheFilePath = self.nil_object(),
             content = self.nil_object(),
@@ -1416,7 +1429,10 @@ function M:setBooksTopStatus(bookShelfId, book_cache_id, current_sort_order, isP
     end
 end
 
-function M:disableAllBookShelves()
+function M:disableAllBookShelves(bookShelfId)
+    if H.is_str(bookShelfId) then
+        return self:execute("UPDATE books SET isEnabled = 0 WHERE bookShelfId = ?;", {bookShelfId})
+    end
     return self:getDB():exec("UPDATE books SET isEnabled = 0;")
 end
 
