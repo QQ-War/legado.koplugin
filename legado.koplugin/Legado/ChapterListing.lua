@@ -306,6 +306,64 @@ function ChapterListing:onMenuHold(item)
 
             UIManager:show(autoturn_spin)
         end
+    }, {
+        text = table.concat({Icons.FA_TRASH, " 向后清理"}),
+        callback = function()
+            UIManager:close(dialog)
+            if not self.all_chapters_count then
+                self.all_chapters_count = Backend:getChapterCount(book_cache_id)
+            end
+            local autoturn_spin = SpinWidget:new{
+                value = 1,
+                value_min = 1,
+                value_max = tonumber(self.all_chapters_count),
+                value_step = 1,
+                value_hold_step = 5,
+                ok_text = "清理",
+                title_text = "请选择需清理的章数：",
+                info_text = "(点击中间数字可直接输入)",
+                extra_text = Icons.FA_TRASH .. " 清理本章后全部",
+                callback = function(autoturn_spin)
+                    local count = tonumber(autoturn_spin.value)
+                    MessageBox:confirm(string.format("确定清理从第 %d 章开始的 %d 章节缓存？", chapters_index + 1, count), function(result)
+                        if not result then return end
+                        Backend:closeDbManager()
+                        MessageBox:loading("清理中 ", function()
+                            return Backend:cleanChapterCacheRange(self.bookinfo.cache_id, tonumber(chapters_index), tonumber(chapters_index) + count - 1)
+                        end, function(state, response)
+                            if state == true then
+                                Backend:HandleResponse(response, function(data)
+                                    MessageBox:success("已清理选定章节")
+                                    self:refreshItems(true)
+                                end, function(err_msg)
+                                    MessageBox:error('失败：', err_msg)
+                                end)
+                            end
+                        end)
+                    end)
+                end,
+                extra_callback = function()
+                    MessageBox:confirm(string.format("确定清理从第 %d 章开始的所有后续缓存？", chapters_index + 1), function(result)
+                        if not result then return end
+                        Backend:closeDbManager()
+                        MessageBox:loading("清理中 ", function()
+                            return Backend:cleanChapterCacheRange(self.bookinfo.cache_id, tonumber(chapters_index), 999999)
+                        end, function(state, response)
+                            if state == true then
+                                Backend:HandleResponse(response, function(data)
+                                    MessageBox:success("已清理选定章节")
+                                    self:refreshItems(true)
+                                end, function(err_msg)
+                                    MessageBox:error('失败：', err_msg)
+                                end)
+                            end
+                        end)
+                    end)
+                end
+            }
+
+            UIManager:show(autoturn_spin)
+        end
     }}}
 
     local dialog_title = table.concat({"[", tostring(item.text), ']'})
@@ -468,10 +526,32 @@ function ChapterListing:openMenu()
                                 require("Legado/ExportDialog"):new({ bookinfo = self.bookinfo }):exportBook()
                             end,
                         }, {
-                            text = "清除缓存",
+                            text = "清理已读",
                             callback = function()
                                 MessageBox:confirm(
-                                    "请确认清除本书缓存：\n",
+                                    "请确认清理本书已读章节的缓存：\n",
+                                    function(result)
+                                        if not result then return end
+                                        Backend:closeDbManager()
+                                        MessageBox:loading("清理中 ", function()
+                                            return Backend:cleanReadChapterCache(self.bookinfo.cache_id)
+                                        end, function(state, response)
+                                            if state == true then
+                                                Backend:HandleResponse(response, function(data)
+                                                    MessageBox:success(tostring(data or "清理完成"))
+                                                    self:refreshItems(true)
+                                                end, function(err_msg)
+                                                    MessageBox:error('失败：', err_msg)
+                                                end)
+                                            end
+                                        end)
+                                end)
+                            end,
+                        }, {
+                            text = "清除全书",
+                            callback = function()
+                                MessageBox:confirm(
+                                    "请确认清除本书所有缓存：\n",
                                     function(result)
                                         if not result then return end
                                         Backend:closeDbManager()

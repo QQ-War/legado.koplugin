@@ -1960,6 +1960,59 @@ function M:cleanBookCache(book_cache_id)
     end
 end
 
+function M:cleanChapterCacheRange(book_cache_id, start_index, end_index)
+    if self:getBackgroundTaskInfo() ~= false then
+        return wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader')
+    end
+    local status = self:analyzeCacheStatusForRange(book_cache_id, start_index, end_index)
+    if H.is_tbl(status) and H.is_tbl(status.cached_chapters) and #status.cached_chapters > 0 then
+        for _, chapter in ipairs(status.cached_chapters) do
+            if chapter.cacheFilePath and util.fileExists(chapter.cacheFilePath) then
+                pcall(function()
+                    require("docsettings"):open(chapter.cacheFilePath):purge()
+                end)
+                util.removeFile(chapter.cacheFilePath)
+            end
+            self.dbManager:dynamicUpdateChapters(chapter, {
+                content = '_NULL',
+                cacheFilePath = '_NULL'
+            })
+        end
+        return wrap_response(true)
+    else
+        return wrap_response(nil, '选定范围内没有缓存')
+    end
+end
+
+function M:cleanReadChapterCache(book_cache_id)
+    if self:getBackgroundTaskInfo() ~= false then
+        return wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader')
+    end
+    local chapters = self.dbManager:getReadChapters(book_cache_id)
+    local deleted_count = 0
+    if H.is_tbl(chapters) and #chapters > 0 then
+        for _, chapter in ipairs(chapters) do
+            if chapter.cacheFilePath and util.fileExists(chapter.cacheFilePath) then
+                pcall(function()
+                    require("docsettings"):open(chapter.cacheFilePath):purge()
+                end)
+                util.removeFile(chapter.cacheFilePath)
+                deleted_count = deleted_count + 1
+            end
+            self.dbManager:dynamicUpdateChapters(chapter, {
+                content = '_NULL',
+                cacheFilePath = '_NULL'
+            })
+        end
+    end
+    
+    if deleted_count > 0 then
+        return wrap_response(true, string.format("成功清理 %d 章已读缓存", deleted_count))
+    else
+        return wrap_response(nil, '没有可清理的已读章节缓存')
+    end
+end
+
 function M:cleanAllBookCaches()
     if self:getBackgroundTaskInfo() ~= false then
         return wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader')

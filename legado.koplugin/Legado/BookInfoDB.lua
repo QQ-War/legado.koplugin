@@ -800,9 +800,42 @@ ORDER BY c.chapterIndex ]]
 end
 
 function M:getChapterCount(bookCacheId)
-    if not H.is_str(bookCacheId) then
-        return 0
+    local sql_stmt = "SELECT count(*) FROM chapters WHERE bookCacheId = ?;"
+    local result = self:execute(sql_stmt, {bookCacheId})
+    if result and result[1] then
+        return tonumber(result[1][1])
     end
+    return 0
+end
+
+function M:getReadChapters(bookCacheId)
+    local sql_stmt = [[
+        SELECT 
+        chapterIndex, 
+        title, 
+        cacheFilePath
+    FROM chapters 
+    WHERE 
+         bookCacheId = ? AND isRead = 1 AND cacheFilePath IS NOT NULL;]]
+
+    local result = self:execute(sql_stmt, {bookCacheId})
+
+    local chapters = {}
+    if result and #result > 0 then
+        for i = 1, #result, 1 do
+            local row = result[i]
+            chapters[i] = {
+                book_cache_id = bookCacheId,
+                chapters_index = tonumber(row[1]),
+                title = row[2],
+                cacheFilePath = row[3],
+            }
+        end
+    end
+    return chapters
+end
+
+function M:getChapterCount(bookCacheId)
     local sql_stmt = "SELECT count(*) as total_num FROM chapters WHERE bookCacheId = ?;"
     local result = self:execute(sql_stmt, {bookCacheId})
     if result and result[1] and result[1][1] then
