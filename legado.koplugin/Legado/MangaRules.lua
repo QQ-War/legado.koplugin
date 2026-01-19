@@ -52,12 +52,17 @@ M.antiScrapingProfiles = {
     ["wnacg.org"] = "http://www.wnacg.org/",
     ["xiuren.org"] = "http://www.xiuren.org/",
     ["ykmh.com"] = "https://www.ykmh.com/",
-    ["yymh889.com"] = "http://yymh889.com/"
+    ["yymh889.com"] = "http://yymh889.com/",
+    ["mxshm.top"] = "https://www.mxshm.top/"
 }
 
 M.extraHeaders = {
     ["kkmh.com"] = { ["Origin"] = "https://www.kuaikanmanhua.com" },
-    ["kuaikanmanhua.com"] = { ["Origin"] = "https://www.kuaikanmanhua.com" }
+    ["kuaikanmanhua.com"] = { ["Origin"] = "https://www.kuaikanmanhua.com" },
+    ["mxshm.top"] = { 
+        ["Referer"] = "https://www.mxshm.top/",
+        ["User-Agent"] = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1"
+    }
 }
 
 function M.getRefererForUrl(url)

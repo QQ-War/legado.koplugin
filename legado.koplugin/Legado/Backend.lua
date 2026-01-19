@@ -467,7 +467,30 @@ function M:refreshChaptersCache(bookinfo, last_refresh_time)
     end))
 end
 function M:pGetChapterContent(chapter)
-    return wrap_response(self.apiClient:getBookContent(chapter))
+    local response = wrap_response(self.apiClient:getBookContent(chapter))
+
+    -- 核心修复：针对服务端 Jsoup 解析异常（如 mxshm.top 的 css: 前缀导致 500）增加本地 fallback
+    if (not H.is_tbl(response) or response.type ~= 'SUCCESS') and chapter.bookUrl then
+        local host = chapter.bookUrl:match("https?://([^/]+)")
+        if host and (host:find("mxshm.top") or host:find("www.mxshm.top")) then
+            dbg.log("Server getBookContent failed, trying local fallback for", host)
+            local clean_url = MangaRules.sanitizeImageUrl(chapter.url)
+            if not clean_url:find("^https?://") then
+                clean_url = MangaRules.getAbsoluteUrl(clean_url, chapter.bookUrl)
+            end
+            local status, html_data = pGetUrlContent({
+                url = clean_url,
+                timeout = 20,
+                maxtime = 60
+            })
+            if status and H.is_tbl(html_data) and html_data.data then
+                dbg.log("Local fallback success for", host)
+                return wrap_response(html_data.data)
+            end
+        end
+    end
+
+    return response
 end
 function M:refreshBookContent(chapter)
     return wrap_response(self.apiClient:refreshBookContent(chapter))
@@ -1482,6 +1505,7 @@ function M:getChapterImgList(chapter)
         bookUrl = bookUrl,
         chapters_index = down_chapters_index,
         origin = origin,
+        url = chapter.url,
     }), function(data)
         local err_msg
         if H.is_str(data) then

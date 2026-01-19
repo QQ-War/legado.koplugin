@@ -292,6 +292,8 @@ M.map_error_message = function(err_msg)
         ["timeout"] = "请求超时",
         ["closed"] = "连接已关闭",
         ["eof"] = "连接意外终止",
+        ["500 not expected"] = "服务器内部错误(500)，可能是源网站屏蔽了服务器IP或书源失效",
+        ["403 not expected"] = "访问被拒绝(403)，可能是触发了防盗链或需要验证码",
     }
     return err_map[lower_err] or ("网络请求失败，请检查：" .. err_msg)
 end
