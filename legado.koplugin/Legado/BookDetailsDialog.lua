@@ -140,50 +140,6 @@ function BookDetails:getButtonGroup(other_elements_height)
     end
     if self.has_reload_btn then
         table.insert(buttons, {
-            text = "管理缓存",
-            callback = function()
-                local MessageBox = require("Legado/MessageBox")
-                local options = {
-                    {
-                        text = "清理已读章节",
-                        callback = function()
-                            local last_read = Backend:getLastReadChapter(self.bookinfo.cache_id) or 0
-                            if last_read > 0 then
-                                MessageBox:loading("正在清理...", function()
-                                    return Backend:cleanChapterCacheRange(self.bookinfo.cache_id, 0, last_read - 1)
-                                end, function(state, response)
-                                    if state then
-                                        MessageBox:notice(string.format("已清理 %d 个已读章节", response.body or 0))
-                                        self:_reload()
-                                    end
-                                end)
-                            else
-                                MessageBox:notice("没有可清理的已读章节")
-                            end
-                        end
-                    },
-                    {
-                        text = "清理全部缓存",
-                        callback = function()
-                            MessageBox:confirm("确定要清空本书所有缓存吗？", function(result)
-                                if result then
-                                    Backend:cleanBookCache(self.bookinfo.cache_id)
-                                    MessageBox:notice("清理完成")
-                                    self:_reload()
-                                end
-                            end)
-                        end
-                    }
-                }
-                local ButtonDialog = require("ui/widget/buttondialog")
-                local dialog = ButtonDialog:new{
-                    title = "缓存管理",
-                    buttons = {options},
-                }
-                UIManager:show(dialog)
-            end
-        })
-        table.insert(buttons, {
             text = "封面刷新",
             callback = function()
                 local image_path = Backend:get_default_cover_cache(self.bookinfo.cache_id)  
@@ -359,7 +315,6 @@ function BookDetails:getBookDetails()
         { label = "来源", value = self.bookinfo.originName },
         { label = "总章数", value = self.bookinfo.totalChapterNum },
         { label = "总字数", value = self.bookinfo.wordCount },
-        { label = "缓存", value = Backend:getBookCacheSize(self.bookinfo.cache_id) },
     }
     table.insert(book_metadata_group, self:_createMetadataGroup(metadata_table))
 

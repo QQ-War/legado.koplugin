@@ -1623,18 +1623,6 @@ function M:closeDbManager()
     self.dbManager:closeDB()
 end
 
-function M:getBookCacheSize(book_cache_id)
-    return CacheManager.getBookCacheSize(book_cache_id)
-end
-
-function M:cleanChapterCacheRange(book_cache_id, start_index, end_index)
-    if self:getBackgroundTaskInfo() ~= false then
-        return wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader')
-    end
-    local count = CacheManager.cleanChapterCacheRange(self.dbManager, book_cache_id, start_index, end_index)
-    return wrap_response(count)
-end
-
 function M:cleanBookCache(book_cache_id)
     if self:getBackgroundTaskInfo() ~= false then
         return wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader')

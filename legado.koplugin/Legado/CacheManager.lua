@@ -58,59 +58,6 @@ function M.getCacheChapterFilePath(dbManager, chapter, not_write_db)
     return chapter
 end
 
--- 格式化大小显示
-function M.formatSize(size)
-    if not size or size <= 0 then return "0 B" end
-    if size < 1024 then return size .. " B" end
-    if size < 1048576 then return string.format("%.2f KB", size / 1024) end
-    if size < 1073741824 then return string.format("%.2f MB", size / 1048576) end
-    return string.format("%.2f GB", size / 1073741824)
-end
-
--- 计算文件夹占用空间
-function M.calculateDirectorySize(path)
-    local size = 0
-    if not util.directoryExists(path) then return 0 end
-    -- 递归查找文件并累加大小
-    util.findFiles(path, function(file_path, fname, attr)
-        if attr and attr.size then
-            size = size + attr.size
-        end
-    end, true)
-    return size
-end
-
--- 获取书籍缓存占用空间
-function M.getBookCacheSize(book_cache_id)
-    local book_cache_path = H.getBookCachePath(book_cache_id)
-    local size = M.calculateDirectorySize(book_cache_path)
-    return M.formatSize(size)
-end
-
--- 清理指定范围内的章节缓存
-function M.cleanChapterCacheRange(dbManager, book_cache_id, start_index, end_index)
-    local status = M.analyzeCacheStatusForRange(dbManager, book_cache_id, start_index, end_index)
-    local count = 0
-    if status and status.cached_chapters then
-        for _, chapter in ipairs(status.cached_chapters) do
-            if chapter.cacheFilePath and util.fileExists(chapter.cacheFilePath) then
-                -- 尝试清理 KOReader 的书籍设置记录 (如有)
-                pcall(function()
-                    require("docsettings"):open(chapter.cacheFilePath):purge()
-                end)
-                util.removeFile(chapter.cacheFilePath)
-                count = count + 1
-            end
-            -- 更新数据库标记
-            dbManager:dynamicUpdateChapters(chapter, {
-                content = '_NULL',
-                cacheFilePath = '_NULL'
-            })
-        end
-    end
-    return count
-end
-
 -- 清理单本书的缓存
 function M.cleanBookCache(dbManager, bookShelfId, book_cache_id)
     dbManager:clearBook(bookShelfId, book_cache_id)
