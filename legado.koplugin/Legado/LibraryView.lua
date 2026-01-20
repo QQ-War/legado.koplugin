@@ -391,33 +391,12 @@ function LibraryView:openMenu(dimen)
         end,
         align = unified_align,
     }}, {{
-        text = string.format("%s Clear all caches", Icons.FA_TRASH),
+        text = string.format("%s 缓存分析与管理", Icons.FA_TRASH),
         callback = function()
             UIManager:close(dialog)
-            MessageBox:confirm(
-                "是否清空本地书架所有已缓存章节与阅读记录？\r\n（刷新会重新下载）",
-                function(result)
-                    if result then
-                        Backend:closeDbManager()
-                        MessageBox:loading("清除中", function()
-                            return Backend:cleanAllBookCaches()
-                        end, function(state, response)
-                            if state == true then
-                                Backend:HandleResponse(response, function(data)
-                                    settings.servers_history = {}
-                                    Backend:saveSettings(settings)
-                                    MessageBox:notice("已清除")
-                                    self:closeMenu()
-                                end, function(err_msg)
-                                    MessageBox:error('操作失败：', tostring(err_msg))
-                                end)
-                            end
-                        end)
-                    end
-                end, {
-                    ok_text = "清空",
-                    cancel_text = "取消"
-                })
+            UIManager:nextTick(function()
+                UIManager:show(require("Legado/CacheManagementDialog"):new{})
+            end)
         end,
         align = unified_align,
     }}, {{

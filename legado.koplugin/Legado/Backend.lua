@@ -1623,6 +1623,11 @@ function M:closeDbManager()
     self.dbManager:closeDB()
 end
 
+function M:getAllBooksCacheStats()
+    local bookShelfId = self:getCurrentBookShelfId()
+    return CacheManager.getAllBooksCacheStats(self.dbManager, bookShelfId)
+end
+
 function M:getBookCacheSize(book_cache_id)
     return CacheManager.getBookCacheSize(book_cache_id)
 end
