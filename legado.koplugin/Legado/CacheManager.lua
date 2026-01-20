@@ -58,44 +58,6 @@ function M.getCacheChapterFilePath(dbManager, chapter, not_write_db)
     return chapter
 end
 
--- 获取所有书籍的缓存占用排行榜
-function M.getAllBooksCacheStats(dbManager, currentBookShelfId)
-    local stats = {}
-    local total_size = 0
-    local cache_root = H.getPluginCacheDirectory()
-    
-    if not util.directoryExists(cache_root) then
-        return stats, 0
-    end
-
-    -- 扫描缓存目录下的所有文件夹（每个文件夹名通常是 book_cache_id）
-    local lfs = require("libs/libkoreader-lfs")
-    for file in lfs.dir(cache_root) do
-        if file ~= "." and file ~= ".." then
-            local full_path = cache_root .. "/" .. file
-            local attr = lfs.attributes(full_path)
-            if attr and attr.mode == "directory" then
-                local size = M.calculateDirectorySize(full_path)
-                if size > 0 then
-                    total_size = total_size + size
-                    -- 尝试从数据库找回书名
-                    local bookinfo = dbManager:getBookinfo(currentBookShelfId, file)
-                    table.insert(stats, {
-                        cache_id = file,
-                        name = bookinfo.name or "未知书籍 (" .. file:sub(1,6) .. ")",
-                        size = size,
-                        size_text = M.formatSize(size)
-                    })
-                end
-            end
-        end
-    end
-
-    -- 按占用空间降序排列
-    table.sort(stats, function(a, b) return a.size > b.size end)
-    return stats, total_size
-end
-
 -- 格式化大小显示
 function M.formatSize(size)
     if not size or size <= 0 then return "0 B" end
