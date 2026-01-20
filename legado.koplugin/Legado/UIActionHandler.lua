@@ -32,19 +32,17 @@ function M.showReaderUI(view_ref, chapter)
     end
     
     UIManager:nextTick(function()
-        local backend = view_ref.backend or require("Legado/Backend")
-        backend:after_reader_chapter_show(chapter)
+        view_ref.backend:after_reader_chapter_show(chapter)
     end)
 end
 
 -- 加载并渲染章节逻辑 (核心调度)
 function M.loadAndRenderChapter(view_ref, chapter)
     if not (chapter and chapter.book_cache_id) then return end
-    local backend = view_ref.backend or require("Legado/Backend")
     
     -- 漫画流式阅读特殊处理
     if chapter.cacheExt == 'cbz' then
-        local extras_settings = backend:getBookExtras(chapter.book_cache_id)
+        local extras_settings = view_ref.backend:getBookExtras(chapter.book_cache_id)
         if extras_settings.data and extras_settings.data.stream_image_view == true then
             if not NetworkMgr:isConnected() then
                 return MessageBox:error("流式漫画需要网络连接")
@@ -53,7 +51,7 @@ function M.loadAndRenderChapter(view_ref, chapter)
                 view_ref.stream_view = require("Legado/StreamImageView"):fetchAndShow({
                     chapter = chapter,
                     on_return_callback = function()
-                        local bookinfo = backend:getBookInfoCache(chapter.book_cache_id)
+                        local bookinfo = view_ref.backend:getBookInfoCache(chapter.book_cache_id)
                         view_ref:showBookTocDialog(bookinfo)
                     end,
                 })   
@@ -62,15 +60,15 @@ function M.loadAndRenderChapter(view_ref, chapter)
         end
     end
 
-    local cache_chapter = backend:getCacheChapterFilePath(chapter)
+    local cache_chapter = view_ref.backend:getCacheChapterFilePath(chapter)
     if cache_chapter and cache_chapter.cacheFilePath then
         M.showReaderUI(view_ref, cache_chapter)
     else
         return MessageBox:loading("正在下载正文", function()
-            return backend:downloadChapter(chapter)
+            return view_ref.backend:downloadChapter(chapter)
         end, function(state, response)
             if state == true then
-                backend:HandleResponse(response, function(data)
+                view_ref.backend:HandleResponse(response, function(data)
                     M.showReaderUI(view_ref, data)
                 end, function(err_msg)
                     MessageBox:error(err_msg or '下载失败')
@@ -84,11 +82,10 @@ end
 function M.openLastReadChapter(view_ref, bookinfo)
     if not (bookinfo and bookinfo.cache_id) then return false end
     local book_cache_id = bookinfo.cache_id
-    local backend = view_ref.backend or require("Legado/Backend")
-    local last_read_chapter_index = backend:getLastReadChapter(book_cache_id)
+    local last_read_chapter_index = view_ref.backend:getLastReadChapter(book_cache_id)
     
     if last_read_chapter_index and last_read_chapter_index >= 0 then
-        local chapter = backend:getChapterInfoCache(book_cache_id, last_read_chapter_index)
+        local chapter = view_ref.backend:getChapterInfoCache(book_cache_id, last_read_chapter_index)
         if chapter and chapter.chapters_index then
             chapter.call_event = "next"
             M.loadAndRenderChapter(view_ref, chapter)

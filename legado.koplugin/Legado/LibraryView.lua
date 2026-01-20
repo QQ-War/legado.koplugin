@@ -45,7 +45,6 @@ function LibraryView:init()
     if LibraryView.instance then
         return
     end
-    self.backend = Backend
     self.book_browser_homedir = self:getBrowserHomeDir(true)
     self:backupDbWithPreCheck()
     LibraryView.instance = self
@@ -59,7 +58,7 @@ function LibraryView:fetchAndShow()
     local is_first = not LibraryView.instance
     local library_obj = LibraryView.instance or self:getInstance()
     local use_browser = not self:isDisableBrowserMode() and is_first and self:browserViewHasLnk()
-    local widget = use_browser and library_obj:getBrowserWidget() or library_obj:getMenuWidget()
+    local widget = use_browser and self:getBrowserWidget() or self:getMenuWidget()
     if widget then
         widget:show_view()
         widget:refreshItems()
