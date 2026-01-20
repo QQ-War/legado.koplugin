@@ -6,26 +6,13 @@ local LuaSettings = require("luasettings")
 local socket_url = require("socket.url")
 local Spore = require("Spore")
 local H = require("Legado/Helper")
+local BaseApi = require("Legado/BaseApi")
 
-local M = {
+local M = BaseApi:new{
     name = "legado_app",
     client = nil,
-    settings = nil,
     _need_login = false,
 }
-
-function M:extend(subclass_prototype)
-    local o = subclass_prototype or {}
-    setmetatable(o, self)
-    self.__index = self
-    return o
-end
-
-function M:new(o)
-    o = self:extend(o)
-    if o.init then o:init() end
-    return o
-end
 
 function M:init()
     local LegadoSpec, err_msg= H.require("Legado/LegadoSpec")
