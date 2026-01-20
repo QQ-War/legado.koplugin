@@ -3,9 +3,9 @@ local logger = require("logger")
 local util = require("util")
 local socket_url = require("socket.url")
 local H = require("Legado/Helper")
-local AndroidAppApi = require("Legado/web_android_app")
+local LegadoSpec = require("Legado/web_android_app")
 
-local M = AndroidAppApi:extend{
+local M = LegadoSpec:extend{
   name = "reader3",
   client = nil,
   settings = nil,

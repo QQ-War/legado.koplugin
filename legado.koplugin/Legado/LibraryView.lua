@@ -19,8 +19,6 @@ local Icons = require("Legado/Icons")
 local Backend = require("Legado/Backend")
 local MessageBox = require("Legado/MessageBox")
 local H = require("Legado/Helper")
-local BackupService = require("Legado/BackupService")
-local UIActionHandler = require("Legado/UIActionHandler")
 
 local LibraryView = {
     disk_available = nil,
@@ -51,7 +49,39 @@ function LibraryView:init()
 end
 
 function LibraryView:backupDbWithPreCheck()
-    return BackupService.backupDbWithPreCheck(Backend)
+    local temp_dir = H.getTempDirectory()
+    local last_backup_db = H.joinPath(temp_dir, "bookinfo.db.bak")
+    local bookinfo_db_path = H.joinPath(temp_dir, "bookinfo.db")
+
+    if not util.fileExists(bookinfo_db_path) then
+        logger.warn("legado plugin: source database file does not exist - " .. bookinfo_db_path)
+        return false
+    end
+
+    local setting_data = Backend:getSettings()
+    local last_backup_time = setting_data.last_backup_time or 0
+    local has_backup = util.fileExists(last_backup_db)
+    local needs_backup = not has_backup or (os.time() - last_backup_time > 86400)
+
+    if not needs_backup then
+        return true
+    end
+
+    local status, err = pcall(function()
+        Backend:getBookShelfCache()
+    end)
+    if not status then
+        logger.err("legado plugin: database pre-check failed - " .. tostring(err))
+        return false
+    end
+
+    if has_backup then
+        util.removeFile(last_backup_db)
+    end
+    H.copyFileFromTo(bookinfo_db_path, last_backup_db)
+    logger.info("legado plugin: backup successful")
+    setting_data.last_backup_time = os.time()
+    Backend:saveSettings(setting_data)
 end
 
 function LibraryView:fetchAndShow()
@@ -522,7 +552,58 @@ function LibraryView:afterCloseReaderUi(callback)
 end
 
 function LibraryView:loadAndRenderChapter(chapter)
-    return UIActionHandler.loadAndRenderChapter(self, chapter)
+    if not (H.is_tbl(chapter) and chapter.book_cache_id) then 
+        logger.err("loadAndRenderChapter: chapter parameter is invalid")
+        return 
+    end
+    if chapter.cacheExt == 'cbz' then
+        local book_cache_id = chapter.book_cache_id
+        local extras_settings = Backend:getBookExtras(book_cache_id)
+        if H.is_tbl(extras_settings.data) and extras_settings.data.stream_image_view == true then
+            MessageBox:notice("流式漫画开启")
+            if not NetworkMgr:isConnected() then
+                MessageBox:error("需要网络连接")
+                return
+            end
+             self:afterCloseReaderUi(function()
+                local ex_chapter = chapter
+                self.stream_view = require("Legado/StreamImageView"):fetchAndShow({
+                    chapter = ex_chapter,
+                    on_return_callback = function()
+                        local bookinfo = Backend:getBookInfoCache(ex_chapter.book_cache_id)
+                        --self:openLastReadChapter(bookinfo)
+                        self:showBookTocDialog(bookinfo)
+                    end,
+                })   
+            end)
+            return 
+        end
+    end
+
+    local cache_chapter = Backend:getCacheChapterFilePath(chapter)
+
+    if (H.is_tbl(cache_chapter) and H.is_str(cache_chapter.cacheFilePath)) then
+        self:showReaderUI(cache_chapter)
+    else
+        Backend:closeDbManager()
+        return MessageBox:loading("正在下载正文", function()
+            return Backend:downloadChapter(chapter)
+        end, function(state, response)
+            if state == true then
+                Backend:HandleResponse(response, function(data)
+                    if not H.is_tbl(data) or not H.is_str(data.cacheFilePath) then
+                        MessageBox:error('下载失败')
+                        return
+                    end
+                    self:showReaderUI(data)
+                end, function(err_msg)
+                    MessageBox:notice("请检查并刷新书架")
+                    MessageBox:error(err_msg or '错误')
+                end)
+            end
+
+        end)
+    end
 end
 
 function LibraryView:ReaderUIEventCallback(chapter_direction)
@@ -562,11 +643,58 @@ function LibraryView:ReaderUIEventCallback(chapter_direction)
 end
 
 function LibraryView:showReaderUI(chapter)
-    return UIActionHandler.showReaderUI(self, chapter)
+    if not (H.is_tbl(chapter) and H.is_str(chapter.cacheFilePath)) then
+        return
+    end
+    local book_path = chapter.cacheFilePath
+    if not util.fileExists(book_path) then
+        return MessageBox:error(book_path, "不存在")
+    end
+    self:readingChapter(chapter)
+
+    local toc_obj = self:getBookTocWidget()
+    if toc_obj and UIManager:isWidgetShown(toc_obj) then
+        UIManager:close(toc_obj)
+    end
+    if ReaderUI.instance then
+        ReaderUI.instance:switchDocument(book_path, true)
+    else
+        UIManager:broadcastEvent(Event:new("SetupShowReader"))
+        ReaderUI:showReader(book_path, nil, true)
+    end
+    UIManager:nextTick(function()
+        Backend:after_reader_chapter_show(chapter)
+    end)
 end
 
 function LibraryView:openLastReadChapter(bookinfo)
-    return UIActionHandler.openLastReadChapter(self, bookinfo)
+    if not (H.is_tbl(bookinfo) and bookinfo.cache_id) then
+        logger.err("openLastReadChapter parameter error")
+        return false
+    end
+
+    local book_cache_id = bookinfo.cache_id
+    local last_read_chapter_index = Backend:getLastReadChapter(book_cache_id)
+    -- default 0
+    if H.is_num(last_read_chapter_index) then
+
+        if last_read_chapter_index < 0 then
+            last_read_chapter_index = 0
+        end
+
+        local chapter = Backend:getChapterInfoCache(book_cache_id, last_read_chapter_index)
+        if H.is_tbl(chapter) and chapter.chapters_index then
+            -- jump to the reading position
+            chapter.call_event = "next"
+            self:loadAndRenderChapter(chapter)
+        else
+            -- chapter does not exist, request refresh
+            self:showBookTocDialog(bookinfo)
+            MessageBox:notice('请同步刷新目录数据')
+        end
+        
+        return true
+    end 
 end
 
 function LibraryView:getSharedMetaData(dir)

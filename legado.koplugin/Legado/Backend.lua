@@ -12,9 +12,6 @@ local time = require("ui/time")
 local UIManager = require("ui/uimanager")
 local H = require("Legado/Helper")
 local MangaRules = require("Legado/MangaRules")
-local MangaService = require("Legado/MangaService")
-local CacheManager = require("Legado/CacheManager")
-local SyncService = require("Legado/SyncService")
 
 -- 太旧版本缺少这个函数
 if not dbg.log then
@@ -41,7 +38,29 @@ local function wrap_response(data, err_message)
     return response
 end
 
-local function pGetUrlContent(self, options)
+local function get_url_extension(url)
+    if type(url) ~= "string" or url == "" then
+        return ""
+    end
+    local parsed = socket_url.parse(url)
+    local path = parsed and parsed.path
+    if not path or path == "" then
+        return ""
+    end
+    path = socket_url.unescape(path):gsub("/+$", "")
+
+    local filename = path:match("([^/]+)$") or ""
+    local ext = filename:match("%.([%w]+)$")
+    -- logger.info(path, filename, ext)
+    return ext and ext:lower() or "", filename
+end
+
+local function convertToGrayscale(image_data)
+    local Png = require("Legado/Png")
+    return Png.processImage(Png.toGrayscale, image_data, 1)
+end
+
+local function pGetUrlContent(options)
     if not M.httpReq then 
         M.httpReq = require("Legado.HttpRequest")
     end
@@ -82,6 +101,157 @@ local function pGetUrlContent(self, options)
     end
 
     return M.httpReq(options, true)
+end
+
+local function pDownload_CreateCBZ(self, chapter, filePath, img_sources, bookUrl)
+
+    dbg.v('CreateCBZ strat:')
+
+    if not filePath or not H.is_tbl(img_sources) then
+        error("Cbz param error:")
+    end
+
+    local is_convertToGrayscale = false
+    local settings = self:getSettings()
+    local use_proxy = settings.manga_proxy_download == true
+
+    local cbz_path_tmp = filePath .. '.downloading'
+
+    if util.fileExists(cbz_path_tmp) then
+        -- 仅作为最后一道防线，避免多个进程同时写入同一个文件
+        -- 如果文件已存在超过 600 秒，则认为是一个过期的下载任务产生的残留文件
+        local lfs = require("libs/libkoreader-lfs")
+        local attributes = lfs.attributes(cbz_path_tmp)
+        local m_mtime = attributes and attributes.modification or 0
+        if os.time() - m_mtime < 600 then
+            -- 尝试等待一段时间，看另一个进程是否能完成
+            local socket = require("socket")
+            for i = 1, 10 do
+                if not util.fileExists(cbz_path_tmp) then break end
+                if util.fileExists(filePath) then return filePath end
+                socket.select(nil, nil, 1)
+            end
+            if util.fileExists(filePath) then return filePath end
+            if util.fileExists(cbz_path_tmp) then
+                error("Other threads downloading, cancelled")
+            end
+        else
+            util.removeFile(cbz_path_tmp)
+        end
+    end
+
+    local cbz
+    local cbz_lib
+    local no_compression
+    local mtime
+
+    -- 20250525 PR # 2090: Archive.Writer replaces ZipWriter
+    local ok , ZipWriter = pcall(require, "ffi/zipwriter")
+    if ok and ZipWriter then
+        cbz_lib = "zipwriter"
+        no_compression = true
+
+        cbz = ZipWriter:new{}
+        if not cbz:open(cbz_path_tmp) then
+            error('CreateCBZ cbz:open err')
+        end
+        cbz:add("mimetype", "application/vnd.comicbook+zip", true)
+    else
+        cbz_lib = "archiver"
+        mtime = os.time()
+
+        local Archiver = require("ffi/archiver").Writer
+        cbz = Archiver:new{}
+        if not cbz:open(cbz_path_tmp, "epub") then
+            error(string.format("CreateCBZ cbz:open err: %s", tostring(cbz.err)))
+        end
+
+        cbz:setZipCompression("store")
+        cbz:addFileFromMemory("mimetype", "application/vnd.comicbook+zip", mtime)
+        cbz:setZipCompression("deflate")
+    end
+
+    for i, img_src in ipairs(img_sources) do
+
+        dbg.v('Download_Image start', i, img_src)
+        
+        local status, err
+        if use_proxy then
+            -- Mode 1: Proxy first, fallback to local
+            local proxy_url = self:getProxyImageUrl(bookUrl, img_src)
+            dbg.v('Trying proxy download:', proxy_url)
+            status, err = pGetUrlContent({
+                url = proxy_url,
+                timeout = 20,
+                maxtime = 80,
+            })
+            if not status then
+                dbg.v('Proxy failed, trying local fallback:', img_src)
+                status, err = pGetUrlContent({
+                    url = img_src,
+                    timeout = 15,
+                    maxtime = 60,
+                    is_pic = true,
+                })
+            end
+        else
+            -- Mode 2: Strictly local download
+            dbg.v('Trying strictly local download:', img_src)
+            status, err = pGetUrlContent({
+                url = img_src,
+                timeout = 15,
+                maxtime = 60,
+                is_pic = true,
+            })
+        end
+
+        if status and H.is_tbl(err) and err['data'] then
+
+            local imgdata = err['data']
+            local img_extension = err['ext']
+            if not img_extension or img_extension == "" then
+                img_extension = get_url_extension(img_src)
+            end
+            -- qread may fail to get ext
+            if not img_extension or img_extension == "" then
+                img_extension = "png"
+            end
+            local img_name = string.format("%d.%s", i, img_extension)
+            if is_convertToGrayscale == true and img_extension == 'png' then
+                local success, imgdata_new = convertToGrayscale(imgdata)
+                if success ~= true then
+
+                    goto continue
+                end
+                imgdata = imgdata_new.data
+            end
+
+            if cbz_lib == "zipwriter" then
+                cbz:add(img_name, imgdata, no_compression)
+            else
+                cbz:addFileFromMemory(img_name, imgdata, mtime)
+            end
+
+        else
+            dbg.v('Download_Image err', tostring(err))
+        end
+        ::continue::
+    end
+    if cbz and cbz.close then
+        cbz:close()
+    end
+    dbg.v('CreateCBZ cbz:close')
+
+    if util.fileExists(filePath) ~= true then
+        os.rename(cbz_path_tmp, filePath)
+    else
+        if util.fileExists(cbz_path_tmp) == true then
+            util.removeFile(cbz_path_tmp)
+        end
+        error('exist target file, cancelled')
+    end
+
+    return filePath
 end
 
 function M:HandleResponse(response, on_success, on_error)
@@ -216,11 +386,38 @@ function M:isBookTypeComic(book_cache_id)
 end
 
 function M:refreshLibraryCache(last_refresh_time, isUpdate)
-    return SyncService.refreshLibraryCache(self, last_refresh_time, isUpdate)
+    if last_refresh_time and os.time() - last_refresh_time < 2 then
+        dbg.v('ui_refresh_time prevent refreshChaptersCache')
+        return wrap_response(nil, '处理中')
+    end
+    local ret, err_msg = self.apiClient:getBookshelf(function(response)
+        local bookShelfId = self:getCurrentBookShelfId()
+        local status, err = pcall(function()
+            return self.dbManager:upsertBooks(bookShelfId, response.data, isUpdate)
+        end)
+        if not status then
+            dbg.log('refreshLibraryCache数据写入', err)
+            return nil, '写入数据出错，请重试'
+        end
+        return true
+    end)
+    return wrap_response(ret, err_msg)
 end
 
 function M:syncAndResortBooks()
-    return SyncService.syncAndResortBooks(self)
+    local wrapped_response = self:refreshLibraryCache()
+    return self:HandleResponse(wrapped_response, function(data)
+        local bookShelfId = self:getCurrentBookShelfId()
+        local status, err = pcall(function()
+            return self.dbManager:resortBooksByLastRead(bookShelfId)
+        end)
+        if not status then
+            return wrap_response(nil, "排序失败: " .. tostring(err))
+        end
+        return wrap_response(true)
+    end, function(err_msg)
+        return wrap_response(nil, err_msg)
+    end)
 end
 
 function M:addBookToLibrary(bookinfo)
@@ -248,16 +445,58 @@ function M:getChaptersList(bookinfo)
     return wrap_response(self.apiClient:getChapterList(bookinfo))
 end
 function M:refreshChaptersCache(bookinfo, last_refresh_time)
-    return SyncService.refreshChaptersCache(self, bookinfo, last_refresh_time)
+    if last_refresh_time and os.time() - last_refresh_time < 2 then
+        dbg.v('ui_refresh_time prevent refreshChaptersCache')
+        return wrap_response(nil, '处理中')
+    end
+    if not (H.is_tbl(bookinfo) and H.is_str(bookinfo.bookUrl) and H.is_str(bookinfo.cache_id)) then
+        return wrap_response(nil, "获取目录参数错误")
+    end
+    local book_cache_id = bookinfo.cache_id
+    local bookUrl = bookinfo.bookUrl
+
+    return wrap_response(self.apiClient:getChapterList(bookinfo, function(response)
+        local status, err = H.pcall(function()
+            return self.dbManager:upsertChapters(book_cache_id, response.data)
+        end)
+        if not status then
+            dbg.log('refreshChaptersCache数据写入', tostring(err))
+            return nil, '数据写入出错，请重试'
+        end
+        return true
+    end))
 end
 function M:pGetChapterContent(chapter)
-    return SyncService.pGetChapterContent(self, chapter)
+    local response = wrap_response(self.apiClient:getBookContent(chapter))
+
+    -- 核心修复：针对服务端 Jsoup 解析异常（如 mxshm.top 的 css: 前缀导致 500）增加本地 fallback
+    if (not H.is_tbl(response) or response.type ~= 'SUCCESS') and chapter.bookUrl then
+        local host = chapter.bookUrl:match("https?://([^/]+)")
+        if host and (host:find("mxshm.top") or host:find("www.mxshm.top")) then
+            dbg.log("Server getBookContent failed, trying local fallback for", host)
+            local clean_url = MangaRules.sanitizeImageUrl(chapter.url)
+            if not clean_url:find("^https?://") then
+                clean_url = MangaRules.getAbsoluteUrl(clean_url, chapter.bookUrl)
+            end
+            local status, html_data = pGetUrlContent({
+                url = clean_url,
+                timeout = 20,
+                maxtime = 60
+            })
+            if status and H.is_tbl(html_data) and html_data.data then
+                dbg.log("Local fallback success for", host)
+                return wrap_response(html_data.data)
+            end
+        end
+    end
+
+    return response
 end
 function M:refreshBookContent(chapter)
     return wrap_response(self.apiClient:refreshBookContent(chapter))
 end
 function M:saveBookProgress(chapter)
-    return SyncService.saveBookProgress(self, chapter)
+    return wrap_response(self.apiClient:saveBookProgress(chapter))
 end
 function M:getProxyCoverUrl(coverUrl)
     return self.apiClient:getProxyCoverUrl(coverUrl)
@@ -693,7 +932,7 @@ processLink = function(book_cache_id, resources_src, base_url, is_porxy, callbac
         return resources_relpath
     end
 
-    local status, err = pGetUrlContent(self, {
+    local status, err = pGetUrlContent({
                 url = processed_src,
                 timeout = 15,
                 maxtime = 60
@@ -824,13 +1063,13 @@ function M:_AnalyzingChapters(chapter, content, filePath)
                 if use_proxy then
                     -- Mode 1: Proxy first with local fallback
                     local proxy_url = self:getProxyImageUrl(bookUrl, res_url)
-                    status, err = pGetUrlContent(self, {
+                    status, err = pGetUrlContent({
                         url = proxy_url,
                         timeout = 20,
                         maxtime = 80,
                     })
                     if not status then
-                        status, err = pGetUrlContent(self, {
+                        status, err = pGetUrlContent({
                             url = res_url,
                             timeout = 15,
                             maxtime = 60,
@@ -839,7 +1078,7 @@ function M:_AnalyzingChapters(chapter, content, filePath)
                     end
                 else
                     -- Mode 2: Strictly local
-                    status, err = pGetUrlContent(self, {
+                    status, err = pGetUrlContent({
                         url = res_url,
                         timeout = 15,
                         maxtime = 60,
@@ -854,7 +1093,7 @@ function M:_AnalyzingChapters(chapter, content, filePath)
                     error('下载失败，数据为空')
                 end
 
-                local ext = MangaService.get_url_extension(res_url)
+                local ext = get_url_extension(res_url)
                 if (not ext or ext == "") and not not err.ext then
                     ext = err['ext']
                 end
@@ -864,7 +1103,7 @@ function M:_AnalyzingChapters(chapter, content, filePath)
                 return chapter_writeToFile(chapter, filePath, err['data'])
             else
                 filePath = filePath .. '.cbz'
-                local status, err = H.pcall(MangaService.pDownload_CreateCBZ, self, chapter, filePath, img_sources, bookUrl)
+                local status, err = H.pcall(pDownload_CreateCBZ, self, chapter, filePath, img_sources, bookUrl)
 
                 if not status then
                     error('CreateCBZ err: ' .. tostring(err))
@@ -889,7 +1128,7 @@ function M:_AnalyzingChapters(chapter, content, filePath)
         if html_url == nil or html_url == '' then
             error('转换失败')
         end
-        local status, err = pGetUrlContent(self, {
+        local status, err = pGetUrlContent({
                         url = html_url,
                         timeout = 15,
                         maxtime = 60
@@ -1098,7 +1337,56 @@ end
 
 -- write_to_db, run in subprocess, no DB writes allowed
 function M:getCacheChapterFilePath(chapter, not_write_db)
-    return CacheManager.getCacheChapterFilePath(self.dbManager, chapter, not_write_db)
+
+    if not H.is_tbl(chapter) or chapter.book_cache_id == nil or chapter.chapters_index == nil then
+        dbg.log('getCacheChapterFilePath parameters err:', chapter)
+        return chapter
+    end
+
+    local book_cache_id = chapter.book_cache_id
+    local chapters_index = chapter.chapters_index
+    local book_name = chapter.name or ""
+    local cache_file_path = chapter.cacheFilePath
+    local cacheExt = chapter.cacheExt
+
+    if H.is_str(cache_file_path) then
+        if util.fileExists(cache_file_path) then
+            chapter.cacheFilePath = cache_file_path
+            return chapter
+        else
+            dbg.v('Files are deleted, clear database record flag', cache_file_path)
+            -- 清理可能的临时文件
+            local tmp_file = cache_file_path .. ".tmp"
+            if util.fileExists(tmp_file) then
+                pcall(function() util.removeFile(tmp_file) end)
+            end
+            if not not_write_db then
+                pcall(function()
+                    self.dbManager:updateCacheFilePath(chapter, false)
+                end)
+            end
+            chapter.cacheFilePath = nil
+        end
+    end
+
+    local filePath = H.getChapterCacheFilePath(book_cache_id, chapters_index, book_name)
+
+    local extensions = {'html', 'cbz', 'xhtml', 'txt', 'png', 'jpg'}
+
+    if H.is_str(cacheExt) then
+
+        table.insert(extensions, 1, chapter.cacheExt)
+    end
+
+    for _, ext in ipairs(extensions) do
+        local fullPath = filePath .. '.' .. ext
+        if util.fileExists(fullPath) then
+            chapter.cacheFilePath = fullPath
+            return chapter
+        end
+    end
+
+    return chapter
 end
 
 function M:findNextChaptersNotDownLoad(current_chapter, count)
@@ -1194,7 +1482,7 @@ function M:getPorxyPicUrls(bookUrl, content)
 end
 
 function M:pDownload_Image(img_src, timeout)
-    local status, err = pGetUrlContent(self, {
+    local status, err = pGetUrlContent({
                     url = img_src,
                     timeout = timeout or 15,
                     maxtime = 60,
@@ -1512,15 +1800,45 @@ end
 
 -- 统计并返回指定范围内的未缓存章节信息
 function M:analyzeCacheStatusForRange(book_cache_id, start_index, end_index, stats_only)
-    local status = CacheManager.analyzeCacheStatusForRange(self.dbManager, book_cache_id, start_index, end_index)
-    
-    if stats_only == true then
-        return {
-            cached_count = #status.cached_chapters,
-            uncached_count = #status.uncached_chapters
-        }
+    local result = { total_count = 0, cached_count = 0, uncached_count = 0, cached_chapters = {}, uncached_chapters = {} }
+    if not (H.is_str(book_cache_id) and H.is_num(start_index) and H.is_num(end_index)) then
+        logger.err("analyzeCacheStatusForRange err - book_cache_id, start_index, end_index: ",book_cache_id, start_index, end_index)
+        return result
     end
-    return status
+    if start_index < 0 or end_index < start_index then
+        logger.err("analyzeCacheStatusForRange err - start_index, end_index: ",start_index, end_index)
+        return result
+    end
+    for i = start_index, end_index do
+        -- local all_chapters = self:getBookChapterPlusCache(book_cache_id)
+        local chapter = self:getChapterInfoCache(book_cache_id, i)
+        if H.is_tbl(chapter) then
+            local is_cached = false
+            -- 快速检查：如果数据库有缓存路径且文件存在
+            if chapter.cacheFilePath and util.fileExists(chapter.cacheFilePath) then
+                is_cached = true
+            else
+                -- 完整检查并收集未缓存章节
+                local cache_chapter = self:getCacheChapterFilePath(chapter, true)
+                if H.is_tbl(cache_chapter) and cache_chapter.cacheFilePath and util.fileExists(cache_chapter.cacheFilePath) then
+                    is_cached = true
+                end
+            end
+            if is_cached == true then 
+                result.cached_count = result.cached_count + 1
+                if not stats_only then table.insert(result.cached_chapters, chapter) end
+            else
+                result.uncached_count = result.uncached_count + 1
+                if not stats_only then
+                    chapter.call_event = 'next'
+                    table.insert(result.uncached_chapters, chapter)
+                end
+            end
+            -- 手动计算有效总章数
+            result.total_count = result.total_count + 1
+        end
+    end
+    return result
 end
 
 function M:getChapterInfoCache(bookCacheId, chapterIndex)
@@ -1628,11 +1946,17 @@ function M:cleanBookCache(book_cache_id)
         return wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader')
     end
     local bookShelfId = self:getCurrentBookShelfId()
-    local success, err = CacheManager.cleanBookCache(self.dbManager, bookShelfId, book_cache_id)
-    if success then
+
+    self.dbManager:clearBook(bookShelfId, book_cache_id)
+
+    local book_cache_path = H.getBookCachePath(book_cache_id)
+    if book_cache_path and util.pathExists(book_cache_path) then
+
+        ffiUtil.purgeDir(book_cache_path)
+
         return wrap_response(true)
     else
-        return wrap_response(nil, err)
+        return wrap_response(nil, '没有缓存')
     end
 end
 
@@ -1693,8 +2017,14 @@ function M:cleanAllBookCaches()
     if self:getBackgroundTaskInfo() ~= false then
         return wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader')
     end
+
     local bookShelfId = self:getCurrentBookShelfId()
-    CacheManager.cleanAllBookCaches(self.dbManager, bookShelfId)
+    self.dbManager:clearBooks(bookShelfId)
+    self:closeDbManager()
+    local books_cache_dir = H.getTempDirectory()
+    ffiUtil.purgeDir(books_cache_dir)
+    H.getTempDirectory()
+    self:saveSettings()
     return wrap_response(true)
 end
 
@@ -1883,7 +2213,7 @@ function M:download_cover_img(book_cache_id, cover_url, is_force)
     end
 
     local img_src = self:getProxyCoverUrl(cover_url)
-    local ok, resp = pGetUrlContent(self, {
+    local ok, resp = pGetUrlContent({
                         url = img_src,
                         timeout = 15,
                         maxtime = 60,
