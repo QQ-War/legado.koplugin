@@ -1239,20 +1239,26 @@ function LibraryView:initializeRegisterEvent(parent_ref)
 
         local settings = Backend:getSettings()
 
+        menu_items.Legado_refresh_chapter = {
+            text = Icons.FA_REFRESH .. " 刷新本章",
+            sorting_hint = "main",
+            callback = refresh_current_chapter,
+        }
+        menu_items.Legado_prev_chapter = {
+            text = Icons.FA_ARROW_LEFT .. " 上一章",
+            sorting_hint = "main",
+            callback = function() goto_adjacent_chapter("prev") end,
+        }
+        menu_items.Legado_next_chapter = {
+            text = Icons.FA_ARROW_RIGHT .. " 下一章",
+            sorting_hint = "main",
+            callback = function() goto_adjacent_chapter("next") end,
+        }
+
         menu_items.Legado_reader_ui_menu = {
             text = "Legado 书目",
-            sorting_hint = "main",
+            sorting_hint = "search",
             sub_item_table = {{
-                text = Icons.FA_REFRESH .. " 刷新本章",
-                callback = refresh_current_chapter,
-            }, {
-                text = Icons.FA_ARROW_LEFT .. " 上一章",
-                callback = function() goto_adjacent_chapter("prev") end,
-            }, {
-                text = Icons.FA_ARROW_RIGHT .. " 下一章",
-                separator = true,
-                callback = function() goto_adjacent_chapter("next") end,
-            }, {
                 text = "流式漫画模式",
                 keep_menu_open = true,
                 help_text = "在线获取内容",
