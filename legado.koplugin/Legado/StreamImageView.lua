@@ -166,8 +166,18 @@ function M:getTurnPageNextImage(call_event_type, image_num)
     -- 需要加载新章节内容的情况
     if not is_success then
 
-        -- 更新章节索引并获取新章节的图片列表
+        -- 修复：重新获取完整的章节信息，确保包含url等必要字段
         self.chapter.chapters_index = current_chapter_index
+        local full_chapter = Backend:getChapterInfoCache(self.chapter.book_cache_id, current_chapter_index)
+        if H.is_tbl(full_chapter) then
+            self.chapter.title = full_chapter.title
+            self.chapter.url = full_chapter.url or full_chapter.bookUrl
+            self.chapter.origin = full_chapter.origin
+            logger.dbg("获取新章节完整信息：", current_chapter_index, self.chapter.url)
+        else
+            logger.warn("获取章节信息失败，使用当前chapter对象：", current_chapter_index)
+        end
+
         local new_chapter_imglist = Backend:getChapterImgList(self.chapter)
 
         if H.is_tbl(new_chapter_imglist) and #new_chapter_imglist > 0 then
@@ -256,7 +266,18 @@ function M:getTurnPageNextImageT(call_event_type, image_num)
             end
         else
 
+            -- 修复：重新获取完整的章节信息，确保包含url等必要字段
             self.chapter.chapters_index = current_chapter_index
+            local full_chapter = Backend:getChapterInfoCache(self.chapter.book_cache_id, current_chapter_index)
+            if H.is_tbl(full_chapter) then
+                self.chapter.title = full_chapter.title
+                self.chapter.url = full_chapter.url or full_chapter.bookUrl
+                self.chapter.origin = full_chapter.origin
+                logger.dbg("获取新章节完整信息：", current_chapter_index, self.chapter.url)
+            else
+                logger.warn("获取章节信息失败，使用当前chapter对象：", current_chapter_index)
+            end
+
             local new_chapter_imglist = Backend:getChapterImgList(self.chapter)
 
             if H.is_tbl(new_chapter_imglist) and #new_chapter_imglist > 0 then
