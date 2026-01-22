@@ -113,32 +113,8 @@ M.install = function()
             original_showOpenWithDialog(self, file)
         end
     end
-
-    local ReaderUI = require("apps/reader/readerui")
-    local UIManager = require("ui/uimanager")
-    local original_close = UIManager.close
-    function UIManager:close(widget, ...)
-        if widget == ReaderUI.instance and not _G.__legado_force_close and is_legado_path(nil, ReaderUI.instance) then
-            local LibraryView = require("Legado/LibraryView")
-            local library_obj = LibraryView:getInstance()
-            if library_obj then
-                _G.__legado_suppress_filemanager = true
-                library_obj:fetchAndShow()
-                return true
-            end
-        end
-        if widget == ReaderUI.instance and _G.__legado_force_close then
-            _G.__legado_force_close = nil
-        end
-        return original_close(self, widget, ...)
-    end
-
     local original_showFiles = FileManager.showFiles
     function FileManager:showFiles(path, focused_file, selected_files)
-        if _G.__legado_suppress_filemanager then
-            _G.__legado_suppress_filemanager = nil
-            return
-        end
         if is_legado_path(path) then
             local home_dir = G_reader_settings:readSetting("home_dir") or
                                  require("apps/filemanager/filemanagerutil").getDefaultDir()
@@ -153,6 +129,24 @@ M.install = function()
             end
         end
         original_showFiles(self, path, focused_file, selected_files)
+    end
+
+    local ReaderUI = require("apps/reader/readerui")
+    local original_onClose = ReaderUI.onClose
+    function ReaderUI:onClose(...)
+        if _G.__legado_force_close then
+            _G.__legado_force_close = nil
+            return original_onClose(self, ...)
+        end
+        if is_legado_path(nil, self) then
+            local LibraryView = require("Legado/LibraryView")
+            local library_obj = LibraryView:getInstance()
+            if library_obj then
+                library_obj:fetchAndShow()
+                return true
+            end
+        end
+        return original_onClose(self, ...)
     end
     local filemanagerutil = require("apps/filemanager/filemanagerutil")
     local original_genBookCoverButton = filemanagerutil.genBookCoverButton
