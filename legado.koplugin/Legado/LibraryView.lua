@@ -530,7 +530,6 @@ end
 function LibraryView:openLegadoFolder(path, focused_file, selected_files, done_callback)
     UIManager:nextTick(function()
         if ReaderUI and ReaderUI.instance then
-            _G.__legado_force_close = true
             ReaderUI.instance:onClose()
             self:readerUiVisible(false)
         end
@@ -1093,6 +1092,12 @@ function LibraryView:initializeRegisterEvent(parent_ref)
             if library_obj then library_obj:readerUiVisible(false) end
             if not self.patches_ok then
                 require("readhistory"):removeItemByPath(self.document.file)
+            end
+            if library_obj and not library_obj._legado_switching then
+                _G.__legado_return_to_library = true
+                UIManager:nextTick(function()
+                    self:openLibraryView()
+                end)
             end
         end
     end
