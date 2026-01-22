@@ -661,6 +661,7 @@ function LibraryView:showReaderUI(chapter)
         UIManager:close(toc_obj)
     end
     if ReaderUI.instance then
+        self._legado_switching = true
         ReaderUI.instance:switchDocument(book_path, true)
     else
         UIManager:broadcastEvent(Event:new("SetupShowReader"))
@@ -1017,6 +1018,9 @@ function LibraryView:initializeRegisterEvent(parent_ref)
             return
         elseif self.ui.link and self.ui.document then
             if library_obj then library_obj:readerUiVisible(true) end
+            if library_obj then
+                library_obj._legado_switching = false
+            end
             local chapter_direction = library_obj:chapterDirection()
             if not chapter_direction then
                 return
@@ -1088,6 +1092,11 @@ function LibraryView:initializeRegisterEvent(parent_ref)
             if library_obj then library_obj:readerUiVisible(false) end
             if not self.patches_ok then
                 require("readhistory"):removeItemByPath(self.document.file)
+            end
+            if library_obj and not library_obj._legado_switching then
+                UIManager:nextTick(function()
+                    self:openLibraryView()
+                end)
             end
         end
     end
