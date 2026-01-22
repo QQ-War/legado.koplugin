@@ -26,7 +26,6 @@ return {
     FA_BARS = "\u{F0C9}",
     FA_BELL = "\u{F0F3}",
     FA_CAMERA = "\u{F030}",
-    FA_IMAGE = "\u{F03E}",
     FA_CLOUD = "\u{F0C2}",
     FA_COG = "\u{F013}",
     FA_ENVELOPE = "\u{F0E0}",
