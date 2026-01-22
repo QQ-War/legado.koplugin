@@ -1202,6 +1202,29 @@ function LibraryView:initializeRegisterEvent(parent_ref)
         if not (document and menu_items and is_legado_path(document.file)) then 
             return 
         end
+        local function refresh_current_chapter()
+            local library_obj = library_ref:getInstance()
+            local reading_chapter = library_obj and library_obj:readingChapter()
+            if not reading_chapter then
+                return MessageBox:error("操作失败: 没有获取到当前章节")
+            end
+            reading_chapter.isDownLoaded = true
+            Backend:HandleResponse(Backend:ChangeChapterCache(reading_chapter), function()
+                MessageBox:notice("刷新成功")
+                UIManager:nextTick(function()
+                    library_obj:loadAndRenderChapter(reading_chapter)
+                end)
+            end, function(err_msg)
+                MessageBox:error('操作失败:', tostring(err_msg))
+            end)
+        end
+        local function goto_adjacent_chapter(direction)
+            local library_obj = library_ref:getInstance()
+            if not library_obj then
+                return MessageBox:error("操作失败: 书架未初始化")
+            end
+            library_obj:ReaderUIEventCallback(direction)
+        end
 
         if not self.patches_ok then
             menu_items.go_back_to_legado = {
@@ -1215,6 +1238,22 @@ function LibraryView:initializeRegisterEvent(parent_ref)
         end
 
         local settings = Backend:getSettings()
+
+        menu_items.Legado_refresh_chapter = {
+            text = Icons.FA_REFRESH .. " 刷新本章",
+            sorting_hint = "main",
+            callback = refresh_current_chapter,
+        }
+        menu_items.Legado_prev_chapter = {
+            text = Icons.FA_ARROW_LEFT .. " 上一章",
+            sorting_hint = "main",
+            callback = function() goto_adjacent_chapter("prev") end,
+        }
+        menu_items.Legado_next_chapter = {
+            text = Icons.FA_ARROW_RIGHT .. " 下一章",
+            sorting_hint = "main",
+            callback = function() goto_adjacent_chapter("next") end,
+        }
 
         menu_items.Legado_reader_ui_menu = {
             text = "Legado 书目",
@@ -1523,7 +1562,19 @@ local function init_book_menu(parent)
         width = Device.screen:getWidth(),
         height = Device.screen:getHeight(),
         close_callback = function()
-            Backend:closeDbManager()
+            local FileManager = require("apps/filemanager/filemanager")
+            local filemanagerutil = require("apps/filemanager/filemanagerutil")
+            local home_dir = G_reader_settings:readSetting("home_dir") or filemanagerutil.getDefaultDir()
+            UIManager:nextTick(function()
+                if FileManager.instance then
+                    FileManager.instance:goHome()
+                elseif home_dir then
+                    FileManager:showFiles(home_dir)
+                end
+            end)
+            UIManager:nextTick(function()
+                Backend:closeDbManager()
+            end)
         end,
         show_search_item = nil,
         refresh_menu_key = nil,
