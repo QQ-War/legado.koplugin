@@ -611,6 +611,10 @@ function LibraryView:ReaderUIEventCallback(chapter_direction)
         logger.err("ReaderUIEventCallback: chapter_direction parameter is invalid")
         return
     end
+    -- Clear EndOfBook re-entry guard once we start handling the queued switch.
+    if self._legado_eob_pending then
+        self._legado_eob_pending = false
+    end
 
     local chapter = self:readingChapter()
     if not (H.is_tbl(chapter) and chapter.book_cache_id) then
@@ -1046,6 +1050,10 @@ function LibraryView:initializeRegisterEvent(parent_ref)
         if is_legado_path(nil, self.ui) then
             local library_obj = library_ref:getInstance()
             if library_obj then
+                if library_obj._legado_eob_pending then
+                    return true
+                end
+                library_obj._legado_eob_pending = true
                 -- Sync 100% progress before next chapter
                 local chapter = library_obj:readingChapter()
                 if chapter then
@@ -1054,7 +1062,9 @@ function LibraryView:initializeRegisterEvent(parent_ref)
                 end
 
                 local chapter_direction = "next"
-                library_obj:ReaderUIEventCallback(chapter_direction)
+                UIManager:nextTick(function()
+                    library_obj:ReaderUIEventCallback(chapter_direction)
+                end)
             else
                 self:openLibraryView()
             end
