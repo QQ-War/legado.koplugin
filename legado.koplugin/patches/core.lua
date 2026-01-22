@@ -115,6 +115,11 @@ M.install = function()
     end
     local original_showFiles = FileManager.showFiles
     function FileManager:showFiles(path, focused_file, selected_files)
+        if _G.__legado_return_to_library then
+            _G.__legado_return_to_library = nil
+            self:handleEvent(Event:new("ShowLegadoLibraryView"))
+            return
+        end
         if is_legado_path(path) then
             local home_dir = G_reader_settings:readSetting("home_dir") or
                                  require("apps/filemanager/filemanagerutil").getDefaultDir()

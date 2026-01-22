@@ -1094,6 +1094,7 @@ function LibraryView:initializeRegisterEvent(parent_ref)
                 require("readhistory"):removeItemByPath(self.document.file)
             end
             if library_obj and not library_obj._legado_switching then
+                _G.__legado_return_to_library = true
                 UIManager:nextTick(function()
                     self:openLibraryView()
                 end)
