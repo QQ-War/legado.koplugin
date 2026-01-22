@@ -111,7 +111,7 @@ function ChapterListing:generateItemTableFromChapters(chapters)
 
         local mandatory = (chapter.chapters_index == last_read_chapter and Icons.FA_THUMB_TACK or '') ..
                               (chapter.isRead and Icons.FA_CHECK_CIRCLE or "") ..
-                              (chapter.isDownLoaded ~= true and Icons.FA_DOWNLOAD or "")
+                              (chapter.isDownLoaded == true and Icons.UNICODE_CHECK or Icons.FA_DOWNLOAD)
 
         table.insert(item_table, {
             chapters_index = chapter.chapters_index,
@@ -228,6 +228,64 @@ function ChapterListing:onMenuHold(item)
     local cacheFilePath = chapter.cacheFilePath
     local isDownLoaded = chapter.isDownLoaded
     local dialog
+    local function prompt_clean_range(default_start_index)
+        if not self.all_chapters_count then
+            self.all_chapters_count = Backend:getChapterCount(book_cache_id)
+        end
+        local SpinWidget = require("ui/widget/spinwidget")
+        local start_index = tonumber(default_start_index) or 0
+        if start_index < 0 then
+            start_index = 0
+        end
+        local start_spin = SpinWidget:new{
+            value = start_index + 1,
+            value_min = 1,
+            value_max = tonumber(self.all_chapters_count),
+            value_step = 1,
+            value_hold_step = 5,
+            ok_text = "下一步",
+            title_text = "请选择起始章节",
+            info_text = "(数字为章节序号)",
+            callback = function(spin)
+                local start_num = tonumber(spin.value) or 1
+                local end_spin = SpinWidget:new{
+                    value = start_num,
+                    value_min = start_num,
+                    value_max = tonumber(self.all_chapters_count),
+                    value_step = 1,
+                    value_hold_step = 5,
+                    ok_text = "清理",
+                    title_text = "请选择结束章节",
+                    info_text = "(数字为章节序号)",
+                    callback = function(spin_end)
+                        local end_num = tonumber(spin_end.value) or start_num
+                        local start_idx = start_num - 1
+                        local end_idx = end_num - 1
+                        MessageBox:confirm(string.format("确定清理第 %d 到第 %d 章缓存？", start_num, end_num),
+                            function(result)
+                                if not result then return end
+                                Backend:closeDbManager()
+                                MessageBox:loading("清理中 ", function()
+                                    return Backend:cleanChapterCacheRange(self.bookinfo.cache_id, start_idx, end_idx)
+                                end, function(state, response)
+                                    if state == true then
+                                        Backend:HandleResponse(response, function(data)
+                                            MessageBox:success("已清理选定章节")
+                                            self:refreshItems(true)
+                                        end, function(err_msg)
+                                            MessageBox:error('失败：', err_msg)
+                                        end)
+                                    end
+                                end)
+                            end
+                        )
+                    end
+                }
+                UIManager:show(end_spin)
+            end
+        }
+        UIManager:show(start_spin)
+    end
     local buttons = {{{
         text = table.concat({Icons.FA_CHECK_CIRCLE, (is_read and ' 取消' or ' 标记'), "已读"}),
         callback = function()
@@ -363,6 +421,12 @@ function ChapterListing:onMenuHold(item)
             }
 
             UIManager:show(autoturn_spin)
+        end
+    }, {
+        text = table.concat({Icons.FA_TRASH, " 清理区间"}),
+        callback = function()
+            UIManager:close(dialog)
+            prompt_clean_range(chapters_index)
         end
     }}}
 
