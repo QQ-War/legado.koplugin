@@ -318,6 +318,7 @@ function M:initialize()
                 disable_browser = nil,
                 sync_reading = nil,
                 open_at_last_read = nil,
+                keep_reader_on_exit = nil,
                 manga_proxy_download = false,
         }
         self.settings_data:flush()
