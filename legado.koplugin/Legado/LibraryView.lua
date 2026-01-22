@@ -1285,6 +1285,28 @@ function LibraryView:initializeRegisterEvent(parent_ref)
                     end
                 end,
             }, {
+                text = "刷新本章图片",
+                callback = function()
+                    local library_obj = library_ref:getInstance()
+                    local reading_chapter = library_obj:readingChapter()
+                    if not reading_chapter then
+                        return MessageBox:error("操作失败: 没有获取到当前章节")
+                    end
+                    local ext = reading_chapter.cacheExt
+                    if ext ~= "cbz" and ext ~= "jpg" and ext ~= "png" and ext ~= "webp" then
+                        return MessageBox:notice("当前章节不是漫画图片")
+                    end
+                    reading_chapter.isDownLoaded = true
+                    Backend:HandleResponse(Backend:ChangeChapterCache(reading_chapter), function()
+                        MessageBox:notice("刷新成功")
+                        UIManager:nextTick(function()
+                            library_obj:loadAndRenderChapter(reading_chapter)
+                        end)
+                    end, function(err_msg)
+                        MessageBox:error('操作失败:', tostring(err_msg))
+                    end)
+                end,
+            }, {
                 text = "自动上传阅读进度",
                 keep_menu_open = true,
                 help_text = "阅读时，自动上传阅读进度",
@@ -1541,6 +1563,14 @@ local function init_book_menu(parent)
         height = Device.screen:getHeight(),
         close_callback = function()
             Backend:closeDbManager()
+            local FileManager = require("apps/filemanager/filemanager")
+            local filemanagerutil = require("apps/filemanager/filemanagerutil")
+            local home_dir = G_reader_settings:readSetting("home_dir") or filemanagerutil.getDefaultDir()
+            if FileManager.instance then
+                FileManager.instance:goHome()
+            elseif home_dir then
+                FileManager:showFiles(home_dir)
+            end
         end,
         show_search_item = nil,
         refresh_menu_key = nil,
