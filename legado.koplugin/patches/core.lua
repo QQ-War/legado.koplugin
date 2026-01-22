@@ -52,14 +52,6 @@ M.install = function()
         return true
     end
     M._setMark(ReaderRolling)
-    local function should_keep_reader_open()
-        local Backend = require("Legado/Backend")
-        if Backend and Backend.getSettings then
-            local settings = Backend:getSettings()
-            return settings and settings.keep_reader_on_exit == true
-        end
-        return false
-    end
     local ReaderPaging = require("apps/reader/modules/readerpaging")
     local onGotoViewRel_orig = ReaderPaging.onGotoViewRel
     -- In scroll mode, one screen may have multiple pages
@@ -142,39 +134,6 @@ M.install = function()
             end
         end
         original_showFiles(self, path, focused_file, selected_files)
-    end
-    local ReaderUI = require("apps/reader/readerui")
-    local UIManager = require("ui/uimanager")
-    local original_close = UIManager.close
-    function UIManager:close(widget, ...)
-        if widget == ReaderUI.instance and not _G.__legado_force_close
-            and is_legado_path(nil, ReaderUI.instance) and should_keep_reader_open() then
-            local LibraryView = require("Legado/LibraryView")
-            local library_obj = LibraryView:getInstance()
-            if library_obj then
-                library_obj:fetchAndShow()
-                return true
-            end
-        end
-        if widget == ReaderUI.instance and _G.__legado_force_close then
-            _G.__legado_force_close = nil
-        end
-        return original_close(self, widget, ...)
-    end
-    local original_onClose = ReaderUI.onClose
-    function ReaderUI:onClose(...)
-        if not _G.__legado_force_close and is_legado_path(nil, self) and should_keep_reader_open() then
-            local LibraryView = require("Legado/LibraryView")
-            local library_obj = LibraryView:getInstance()
-            if library_obj then
-                library_obj:fetchAndShow()
-                return true
-            end
-        end
-        if _G.__legado_force_close then
-            _G.__legado_force_close = nil
-        end
-        return original_onClose(self, ...)
     end
     local filemanagerutil = require("apps/filemanager/filemanagerutil")
     local original_genBookCoverButton = filemanagerutil.genBookCoverButton

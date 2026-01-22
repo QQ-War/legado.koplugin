@@ -365,20 +365,6 @@ function LibraryView:openMenu(dimen)
         end,
         align = unified_align,
     }}, {{
-        text = string.format("%s 退出阅读保留书籍  %s", Icons.FA_BOOK,
-            (settings.keep_reader_on_exit and Icons.UNICODE_STAR or Icons.UNICODE_STAR_OUTLINE)),
-        callback = function()
-            UIManager:close(dialog)
-            local ok_msg = settings.keep_reader_on_exit and "关闭" or "开启"
-            settings.keep_reader_on_exit = not settings.keep_reader_on_exit or nil
-            Backend:HandleResponse(Backend:saveSettings(settings), function()
-                MessageBox:notice(string.format("保留书籍已%s", ok_msg))
-            end, function(err_msg)
-                MessageBox:error('设置失败:', err_msg)
-            end)
-        end,
-        align = unified_align,
-    }}, {{
         text = Icons.FA_REFRESH .. " 拉取远端排序",
         callback = function()
             UIManager:close(dialog)
@@ -1108,13 +1094,10 @@ function LibraryView:initializeRegisterEvent(parent_ref)
                 require("readhistory"):removeItemByPath(self.document.file)
             end
             if library_obj and not library_obj._legado_switching then
-                local settings = Backend:getSettings()
-                if not (settings and settings.keep_reader_on_exit == true) then
-                    _G.__legado_return_to_library = true
-                    UIManager:nextTick(function()
-                        self:openLibraryView()
-                    end)
-                end
+                _G.__legado_return_to_library = true
+                UIManager:nextTick(function()
+                    self:openLibraryView()
+                end)
             end
         end
     end
