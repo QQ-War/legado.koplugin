@@ -115,11 +115,6 @@ M.install = function()
     end
     local original_showFiles = FileManager.showFiles
     function FileManager:showFiles(path, focused_file, selected_files)
-        if _G.__legado_return_to_library then
-            _G.__legado_return_to_library = nil
-            self:handleEvent(Event:new("ShowLegadoLibraryView"))
-            return
-        end
         if is_legado_path(path) then
             local home_dir = G_reader_settings:readSetting("home_dir") or
                                  require("apps/filemanager/filemanagerutil").getDefaultDir()
@@ -134,6 +129,24 @@ M.install = function()
             end
         end
         original_showFiles(self, path, focused_file, selected_files)
+    end
+
+    local ReaderUI = require("apps/reader/readerui")
+    local original_onClose = ReaderUI.onClose
+    function ReaderUI:onClose(...)
+        if _G.__legado_force_close then
+            _G.__legado_force_close = nil
+            return original_onClose(self, ...)
+        end
+        if is_legado_path(nil, self) then
+            local LibraryView = require("Legado/LibraryView")
+            local library_obj = LibraryView:getInstance()
+            if library_obj then
+                library_obj:fetchAndShow()
+                return true
+            end
+        end
+        return original_onClose(self, ...)
     end
     local filemanagerutil = require("apps/filemanager/filemanagerutil")
     local original_genBookCoverButton = filemanagerutil.genBookCoverButton
