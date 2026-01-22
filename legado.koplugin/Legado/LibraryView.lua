@@ -87,7 +87,7 @@ end
 function LibraryView:fetchAndShow()
     local is_first = not LibraryView.instance
     local library_obj = LibraryView.instance or self:getInstance()
-    local use_browser = not self:isDisableBrowserMode() and is_first and self:browserViewHasLnk()
+    local use_browser = false
     local widget = use_browser and self:getBrowserWidget() or self:getMenuWidget()
     if widget then
         widget:show_view()
@@ -689,7 +689,7 @@ function LibraryView:openLastReadChapter(bookinfo)
         local chapter = Backend:getChapterInfoCache(book_cache_id, last_read_chapter_index)
         if H.is_tbl(chapter) and chapter.chapters_index then
             -- jump to the reading position
-            chapter.call_event = "next"
+            chapter.call_event = "resume"
             self:loadAndRenderChapter(chapter)
         else
             -- chapter does not exist, request refresh
@@ -833,6 +833,47 @@ function LibraryView:initializeRegisterEvent(parent_ref)
             return page_count
         end
     end
+    local get_page_progress = function(ui, doc_settings)
+        if not (ui and ui.document) then
+            return
+        end
+        local current_page = ui:getCurrentPage()
+        if not current_page or current_page == 0 then
+            if ui.paging or (ui.document.info and ui.document.info.has_pages) then
+                current_page = ui.view and ui.view.state and ui.view.state.page
+            else
+                current_page = ui.document:getXPointer()
+                current_page = ui.document:getPageFromXPointer(current_page)
+            end
+        end
+        local page_count = ui.document:getPageCount()
+        if not (H.is_num(page_count) and page_count > 0) and doc_settings then
+            page_count = doc_settings:readSetting("doc_pages")
+        end
+        if H.is_num(current_page) and H.is_num(page_count) and page_count > 0 then
+            return math.min(1, math.max(0, current_page / page_count))
+        end
+    end
+    local apply_resume_page = function(doc_settings, chapter)
+        if not (doc_settings and chapter and H.is_num(chapter.durChapterPos)) then
+            return false
+        end
+        local page_count = doc_settings:readSetting("doc_pages")
+        if not (H.is_num(page_count) and page_count > 0) then
+            return false
+        end
+        local pos = tonumber(chapter.durChapterPos) or 0
+        if pos < 0 then pos = 0 end
+        if pos > 1 then pos = 1 end
+        local page_number = math.floor(pos * page_count + 0.5)
+        if page_number < 1 then
+            page_number = 1
+        elseif page_number > page_count then
+            page_number = page_count
+        end
+        doc_settings.data.last_page = page_number
+        return true
+    end
     function parent_ref:onDocSettingsLoad(doc_settings, document)
         if not (doc_settings and doc_settings.data and document) then
             return
@@ -889,12 +930,17 @@ function LibraryView:initializeRegisterEvent(parent_ref)
 
             -- current_page == nil
             -- self.ui.document:getPageCount() unreliable, sometimes equal to 0
-            local chapter_direction = library_obj:chapterDirection()
-            local page_count = doc_settings:readSetting("doc_pages") or 99999
-            -- koreader some cases is goto last_page
-            local page_number = calculate_goto_page(chapter_direction, page_count)
-            if H.is_num(page_number) then
-                doc_settings.data.last_page = page_number
+            local chapter = library_obj:readingChapter()
+            local chapter_event = (chapter and chapter.call_event) or library_obj:chapterDirection()
+            if chapter_event == "next" or chapter_event == "prev" then
+                local page_count = doc_settings:readSetting("doc_pages") or 99999
+                -- koreader some cases is goto last_page
+                local page_number = calculate_goto_page(chapter_event, page_count)
+                if H.is_num(page_number) then
+                    doc_settings.data.last_page = page_number
+                end
+            else
+                apply_resume_page(doc_settings, chapter)
             end
 
         elseif is_legado_browser_book(document.file) and doc_settings.data then
@@ -919,9 +965,14 @@ function LibraryView:initializeRegisterEvent(parent_ref)
             -- Sync progress (Local only for power saving during reading)
             local chapter = library_obj:readingChapter()
             if chapter and self.ui and self.ui.getReadingProgress then
+                local page_progress = get_page_progress(self.ui, self.ui.doc_settings)
                 local progress = self.ui:getReadingProgress()
-                if progress and progress.percent then
+                if H.is_num(page_progress) then
+                    chapter.durChapterPos = page_progress
+                elseif progress and progress.percent then
                     chapter.durChapterPos = progress.percent / 100
+                end
+                if H.is_num(chapter.durChapterPos) then
                     -- Just update local DB, no network request here
                     Backend:updateLocalBookProgress(chapter)
                 end
@@ -1003,7 +1054,11 @@ function LibraryView:initializeRegisterEvent(parent_ref)
                     self.ui:handleEvent(Event:new("GotoPage", page_number))
                 end
             end
-            make_pages_continuous(chapter_direction)
+            local chapter = library_obj:readingChapter()
+            local chapter_event = (chapter and chapter.call_event) or chapter_direction
+            if chapter_event == "next" or chapter_event == "prev" then
+                make_pages_continuous(chapter_event)
+            end
         end
     end
 
@@ -1014,9 +1069,14 @@ function LibraryView:initializeRegisterEvent(parent_ref)
             -- Final sync on close
             local chapter = library_obj:readingChapter()
             if chapter and self.ui and self.ui.getReadingProgress then
+                local page_progress = get_page_progress(self.ui, self.ui.doc_settings)
                 local progress = self.ui:getReadingProgress()
-                if progress and progress.percent then
+                if H.is_num(page_progress) then
+                    chapter.durChapterPos = page_progress
+                elseif progress and progress.percent then
                     chapter.durChapterPos = progress.percent / 100
+                end
+                if H.is_num(chapter.durChapterPos) then
                     Backend:updateLocalBookProgress(chapter)
                     local settings = Backend:getSettings()
                     if settings.sync_reading == true and NetworkMgr:isConnected() then
@@ -1544,12 +1604,11 @@ local function init_book_menu(parent)
             self:refreshItems(true)
         end
 
-        local update_toc_visibility = function()
+        self.parent_ref:refreshBookTocWidget(bookinfo, onReturnCallBack, false)
+        self:onClose()
+        if self.parent_ref:openLastReadChapter(bookinfo) ~= true then
             self.parent_ref:refreshBookTocWidget(bookinfo, onReturnCallBack, true)
         end
-        
-        update_toc_visibility()
-        self:onClose()
         
         UIManager:nextTick(function()
             Backend:autoPinToTop(bookinfo.cache_id, bookinfo.sortOrder)
