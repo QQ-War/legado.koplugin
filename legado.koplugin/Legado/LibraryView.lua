@@ -622,8 +622,12 @@ function LibraryView:ReaderUIEventCallback(chapter_direction)
         return
     end
 
-    self:chapterDirection(chapter_direction)
-    chapter.call_event = chapter_direction
+    local lookup_direction = chapter_direction
+    if chapter_direction == "prev_start" then
+        lookup_direction = "prev"
+    end
+    self:chapterDirection(lookup_direction)
+    chapter.call_event = lookup_direction
 
     local nextChapter = Backend:findNextChapter({
         chapters_index = chapter.chapters_index,
@@ -633,7 +637,7 @@ function LibraryView:ReaderUIEventCallback(chapter_direction)
     })
  
     if H.is_tbl(nextChapter) then
-        nextChapter.call_event = chapter.call_event
+        nextChapter.call_event = chapter_direction
         self:loadAndRenderChapter(nextChapter)
     else
         local book_cache_id = self:getReadingBookId()
@@ -832,6 +836,8 @@ function LibraryView:initializeRegisterEvent(parent_ref)
             return 1
         elseif page_count and chapter_direction == "prev" then
             return page_count
+        elseif chapter_direction == "prev_start" then
+            return 1
         end
     end
     local get_page_progress = function(ui, doc_settings)
@@ -933,7 +939,7 @@ function LibraryView:initializeRegisterEvent(parent_ref)
             -- self.ui.document:getPageCount() unreliable, sometimes equal to 0
             local chapter = library_obj:readingChapter()
             local chapter_event = (chapter and chapter.call_event) or library_obj:chapterDirection()
-            if chapter_event == "next" or chapter_event == "prev" then
+            if chapter_event == "next" or chapter_event == "prev" or chapter_event == "prev_start" then
                 local page_count = doc_settings:readSetting("doc_pages") or 99999
                 -- koreader some cases is goto last_page
                 local page_number = calculate_goto_page(chapter_event, page_count)
@@ -1247,7 +1253,7 @@ function LibraryView:initializeRegisterEvent(parent_ref)
         menu_items.Legado_prev_chapter = {
             text = Icons.FA_ARROW_LEFT .. " 上一章",
             sorting_hint = "main",
-            callback = function() goto_adjacent_chapter("prev") end,
+            callback = function() goto_adjacent_chapter("prev_start") end,
         }
         menu_items.Legado_next_chapter = {
             text = Icons.FA_ARROW_RIGHT .. " 下一章",
