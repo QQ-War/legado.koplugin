@@ -66,7 +66,7 @@ function M:loadAndRenderChapter(chapter)
                 end)
             end
 
-        end)
+        end, { dismissable = true })
     end
 end
 
