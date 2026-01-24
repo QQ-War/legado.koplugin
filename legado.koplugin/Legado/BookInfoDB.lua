@@ -540,9 +540,13 @@ ON CONFLICT(bookShelfId, bookCacheId) DO UPDATE SET
 
     local batch_data = {}
     for _, item in ipairs(legado_data) do
-        if H.is_str(item.name) and H.is_str(item.author) and H.is_str(item.bookUrl) then
+        if H.is_str(item.name) and H.is_str(item.bookUrl) then
             item.name = util.trim(item.name)
-            item.author = util.trim(item.author)
+            if H.is_str(item.author) then
+                item.author = util.trim(item.author)
+            else
+                item.author = '未知'
+            end
 
             if item.name ~= '' then
                 if item.author == '' then
