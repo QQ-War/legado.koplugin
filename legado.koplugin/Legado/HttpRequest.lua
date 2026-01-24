@@ -84,13 +84,8 @@ local function pGetUrlContent(options, is_create)
          -- Image requests prioritize
         default_headers["Accept"] = "image/png, image/jpeg, image/webp, image/bmp;q=0.9, image/tiff;q=0.8, image/*;q=0.7"
     end
-
-    -- Use KOReader global proxy if set
-    local proxy = G_reader_settings and G_reader_settings:readSetting("http_proxy")
-
     local request = {
         url = url,
-        proxy = proxy,
         method = options.method or "GET",
         headers = options.headers or default_headers,
         sink = not file_fp and (maxtime and socketutil.table_sink(sink) or ltn12.sink.table(sink)) or
