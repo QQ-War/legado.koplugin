@@ -121,21 +121,6 @@ function LibraryView:onRefreshLibrary()
     end
 end
 
-function LibraryView:clearMenuItems()
-    if self.book_menu then
-        self.book_menu.item_table = self.book_menu:generateEmptyViewItemTable()
-        self.book_menu.multilines_show_more_text = true
-        self.book_menu.items_per_page = 1
-        self.book_menu:updateItems()
-    end
-end
-
-function LibraryView:closeMenu()
-    if self.book_menu then
-        self.book_menu:onClose()
-    end
-end
-
 function LibraryView:openBrowserMenu(file)
     self:getInstance()
     self:getBrowserWidget()
@@ -545,165 +530,6 @@ function LibraryView:openLegadoFolder(path, focused_file, selected_files, done_c
             done_callback()
         end
     end)
-end
-
-function LibraryView:afterCloseReaderUi(callback)
-    self:openLegadoFolder(nil, nil, nil, callback)
-end
-
-function LibraryView:loadAndRenderChapter(chapter)
-    if not (H.is_tbl(chapter) and chapter.book_cache_id) then 
-        logger.err("loadAndRenderChapter: chapter parameter is invalid")
-        return 
-    end
-    if chapter.cacheExt == 'cbz' then
-        local book_cache_id = chapter.book_cache_id
-        local extras_settings = Backend:getBookExtras(book_cache_id)
-        if H.is_tbl(extras_settings.data) and extras_settings.data.stream_image_view == true then
-            MessageBox:notice("流式漫画开启")
-            if not NetworkMgr:isConnected() then
-                MessageBox:error("需要网络连接")
-                return
-            end
-             self:afterCloseReaderUi(function()
-                local ex_chapter = chapter
-                self.stream_view = require("Legado/StreamImageView"):fetchAndShow({
-                    chapter = ex_chapter,
-                    on_return_callback = function()
-                        local bookinfo = Backend:getBookInfoCache(ex_chapter.book_cache_id)
-                        --self:openLastReadChapter(bookinfo)
-                        self:showBookTocDialog(bookinfo)
-                    end,
-                })   
-            end)
-            return 
-        end
-    end
-
-    local cache_chapter = Backend:getCacheChapterFilePath(chapter)
-
-    if (H.is_tbl(cache_chapter) and H.is_str(cache_chapter.cacheFilePath)) then
-        self:showReaderUI(cache_chapter)
-    else
-        Backend:closeDbManager()
-        return MessageBox:loading("正在下载正文", function()
-            return Backend:downloadChapter(chapter)
-        end, function(state, response)
-            if state == true then
-                Backend:HandleResponse(response, function(data)
-                    if not H.is_tbl(data) or not H.is_str(data.cacheFilePath) then
-                        MessageBox:error('下载失败')
-                        return
-                    end
-                    self:showReaderUI(data)
-                end, function(err_msg)
-                    MessageBox:notice("请检查并刷新书架")
-                    MessageBox:error(err_msg or '错误')
-                end)
-            end
-
-        end)
-    end
-end
-
-function LibraryView:ReaderUIEventCallback(chapter_direction)
-    if not H.is_str(chapter_direction) then
-        logger.err("ReaderUIEventCallback: chapter_direction parameter is invalid")
-        return
-    end
-    -- Clear EndOfBook re-entry guard once we start handling the queued switch.
-    if self._legado_eob_pending then
-        self._legado_eob_pending = false
-    end
-
-    local chapter = self:readingChapter()
-    if not (H.is_tbl(chapter) and chapter.book_cache_id) then
-        logger.err("ReaderUIEventCallback: current reading chapter is invalid")
-        return
-    end
-
-    local lookup_direction = chapter_direction
-    if chapter_direction == "prev_start" then
-        lookup_direction = "prev"
-    end
-    self:chapterDirection(lookup_direction)
-    chapter.call_event = lookup_direction
-
-    local nextChapter = Backend:findNextChapter({
-        chapters_index = chapter.chapters_index,
-        call_event = chapter.call_event,
-        book_cache_id = chapter.book_cache_id,
-        totalChapterNum = chapter.totalChapterNum
-    })
- 
-    if H.is_tbl(nextChapter) then
-        nextChapter.call_event = chapter_direction
-        self:loadAndRenderChapter(nextChapter)
-    else
-        local book_cache_id = self:getReadingBookId()
-        if book_cache_id then
-            local bookinfo = Backend:getBookInfoCache(book_cache_id)
-            self:afterCloseReaderUi(function()
-                self:showBookTocDialog(bookinfo)
-            end)
-        end
-    end
-end
-
-function LibraryView:showReaderUI(chapter)
-    if not (H.is_tbl(chapter) and H.is_str(chapter.cacheFilePath)) then
-        return
-    end
-    local book_path = chapter.cacheFilePath
-    if not util.fileExists(book_path) then
-        return MessageBox:error(book_path, "不存在")
-    end
-    self:readingChapter(chapter)
-
-    local toc_obj = self:getBookTocWidget()
-    if toc_obj and UIManager:isWidgetShown(toc_obj) then
-        UIManager:close(toc_obj)
-    end
-    if ReaderUI.instance then
-        self._legado_switching = true
-        ReaderUI.instance:switchDocument(book_path, true)
-    else
-        UIManager:broadcastEvent(Event:new("SetupShowReader"))
-        ReaderUI:showReader(book_path, nil, true)
-    end
-    UIManager:nextTick(function()
-        Backend:after_reader_chapter_show(chapter)
-    end)
-end
-
-function LibraryView:openLastReadChapter(bookinfo)
-    if not (H.is_tbl(bookinfo) and bookinfo.cache_id) then
-        logger.err("openLastReadChapter parameter error")
-        return false
-    end
-
-    local book_cache_id = bookinfo.cache_id
-    local last_read_chapter_index = Backend:getLastReadChapter(book_cache_id)
-    -- default 0
-    if H.is_num(last_read_chapter_index) then
-
-        if last_read_chapter_index < 0 then
-            last_read_chapter_index = 0
-        end
-
-        local chapter = Backend:getChapterInfoCache(book_cache_id, last_read_chapter_index)
-        if H.is_tbl(chapter) and chapter.chapters_index then
-            -- jump to the reading position
-            chapter.call_event = "resume"
-            self:loadAndRenderChapter(chapter)
-        else
-            -- chapter does not exist, request refresh
-            self:showBookTocDialog(bookinfo)
-            MessageBox:notice('请同步刷新目录数据')
-        end
-        
-        return true
-    end 
 end
 
 function LibraryView:getSharedMetaData(dir)
@@ -1882,16 +1708,6 @@ function LibraryView:getBrowserCurrentDir()
     end
 end
 
-function LibraryView:getInstance()
-    if not LibraryView.instance then
-        self:init()
-        if not LibraryView.instance then
-            logger.err("LibraryView init not loaded")
-        end
-    end
-    return self
-end
-
 function LibraryView:getBrowserWidget()
     return init_book_browser(self)
 end
@@ -1902,53 +1718,6 @@ end
 
 function LibraryView:getBookTocWidget()
     return self.book_toc
-end
-
-function LibraryView:refreshBookTocWidget(bookinfo, onReturnCallBack, visible)
-    if not (H.is_tbl(bookinfo) and bookinfo.cache_id) then
-        logger.err("refreshBookTocWidget parameter error")
-        return self.book_toc
-    end
-
-    local book_cache_id = bookinfo.cache_id
-
-    local toc_obj = self.book_toc
-    if not (H.is_tbl(toc_obj) and H.is_tbl(toc_obj.bookinfo) and 
-            toc_obj.bookinfo.cache_id == book_cache_id) then
-            logger.dbg("add new book_toc widget")
-
-            self.book_toc = ChapterListing:fetchAndShow({
-                cache_id = bookinfo.cache_id,
-                bookUrl = bookinfo.bookUrl,
-                durChapterIndex = bookinfo.durChapterIndex,
-                name = bookinfo.name,
-                author = bookinfo.author,
-                cacheExt = bookinfo.cacheExt,
-                origin = bookinfo.origin,
-                originName = bookinfo.originName,
-                originOrder = bookinfo.originOrder,
-                coverUrl = bookinfo.coverUrl,
-
-            }, onReturnCallBack, function(chapter)
-                    self:loadAndRenderChapter(chapter)
-            end, true, visible)
-
-    else
-        logger.dbg("update book_toc widget ReturnCallback")
-        self.book_toc:updateReturnCallback(onReturnCallBack)
-
-        if visible == true then
-            self.book_toc:refreshItems(nil, true)
-            UIManager:show(self.book_toc)
-        end
-    end
-
-    return self.book_toc
-end
-
-function LibraryView:showBookTocDialog(bookinfo)
-    -- Simple display should not cause changes onReturnCallBack
-    return self:refreshBookTocWidget(bookinfo, nil, true)
 end
 
 function LibraryView:chapterDirection(direction)
@@ -2000,5 +1769,14 @@ function LibraryView:currentSelectedBook(book)
     end
     return self._selected_book
 end
+
+-- mixins
+local LibraryViewUI = require("Legado/LibraryViewUI")
+local LibraryViewReader = require("Legado/LibraryViewReader")
+local LibraryViewToc = require("Legado/LibraryViewToc")
+
+for k, v in pairs(LibraryViewUI) do LibraryView[k] = v end
+for k, v in pairs(LibraryViewReader) do LibraryView[k] = v end
+for k, v in pairs(LibraryViewToc) do LibraryView[k] = v end
 
 return LibraryView
