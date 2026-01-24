@@ -74,56 +74,58 @@ function M:openMenu()
                         ok_text = "缓存全书",
                         cancel_text = "取消",
                         other_buttons_first = true,
-                        other_buttons = {{{
-                            text = "导出书籍",
-                            callback = function()
-                                require("Legado/ExportDialog"):new({ bookinfo = self.bookinfo }):exportBook()
-                            end,
-                        }, {
-                            text = "清理已读",
-                            callback = function()
-                                MessageBox:confirm(
-                                    "请确认清理本书已读章节的缓存：\n",
-                                    function(result)
-                                        if not result then return end
-                                        Backend:closeDbManager()
-                                        MessageBox:loading("清理中 ", function()
-                                            return Backend:cleanReadChapterCache(self.bookinfo.cache_id)
-                                        end, function(state, response)
-                                            if state == true then
-                                                Backend:HandleResponse(response, function(data)
-                                                    MessageBox:success(tostring(data or "清理完成"))
-                                                    self:refreshItems(true)
-                                                end, function(err_msg)
-                                                    MessageBox:error('失败：', err_msg)
-                                                end)
-                                            end
+                        other_buttons = {{
+                            {
+                                text = "导出书籍",
+                                callback = function()
+                                    require("Legado/ExportDialog"):new({ bookinfo = self.bookinfo }):exportBook()
+                                end,
+                            }, {
+                                text = "清理已读",
+                                callback = function()
+                                    MessageBox:confirm(
+                                        "请确认清理本书已读章节的缓存：\n",
+                                        function(result)
+                                            if not result then return end
+                                            Backend:closeDbManager()
+                                            MessageBox:loading("清理中 ", function()
+                                                return Backend:cleanReadChapterCache(self.bookinfo.cache_id)
+                                            end, function(state, response)
+                                                if state == true then
+                                                    Backend:HandleResponse(response, function(data)
+                                                        MessageBox:success(tostring(data or "清理完成"))
+                                                        self:refreshItems(true)
+                                                    end, function(err_msg)
+                                                        MessageBox:error('失败：', err_msg)
+                                                    end)
+                                                end
+                                            end)
                                         end)
-                                    end)
-                            end,
-                        }, {
-                            text = "清除全书",
-                            callback = function()
-                                MessageBox:confirm(
-                                    "请确认清除本书所有缓存：\n",
-                                    function(result)
-                                        if not result then return end
-                                        Backend:closeDbManager()
-                                        MessageBox:loading("清理中 ", function()
-                                            return Backend:cleanBookCache(self.bookinfo.cache_id)
-                                        end, function(state, response)
-                                            if state == true then
-                                                Backend:HandleResponse(response, function(data)
-                                                    MessageBox:success("已清理，刷新重新可添加")
-                                                    self:onReturn()
-                                                end, function(err_msg)
-                                                    MessageBox:error('请稍后重试：', err_msg)
-                                                end)
-                                            end
+                                end,
+                            }, {
+                                text = "清除全书",
+                                callback = function()
+                                    MessageBox:confirm(
+                                        "请确认清除本书所有缓存：\n",
+                                        function(result)
+                                            if not result then return end
+                                            Backend:closeDbManager()
+                                            MessageBox:loading("清理中 ", function()
+                                                return Backend:cleanBookCache(self.bookinfo.cache_id)
+                                            end, function(state, response)
+                                                if state == true then
+                                                    Backend:HandleResponse(response, function(data)
+                                                        MessageBox:success("已清理，刷新重新可添加")
+                                                        self:onReturn()
+                                                    end, function(err_msg)
+                                                        MessageBox:error('请稍后重试：', err_msg)
+                                                    end)
+                                                end
+                                            end)
                                         end)
-                                    end)
-                            end,
-                        }}}}
+                                end,
+                            }
+                        }}
                     }
                 )
             end,
