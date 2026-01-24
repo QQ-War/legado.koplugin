@@ -21,6 +21,10 @@ function M:onMenuChoice(item)
     local chapters_index = item.chapters_index
 
     local chapter = Backend:getChapterInfoCache(book_cache_id, chapters_index)
+    if not H.is_tbl(chapter) then
+        MessageBox:notice("章节数据为空")
+        return true
+    end
     if self.onShowingReader then self:onShowingReader() end
     self:showReaderUI(chapter)
     return true

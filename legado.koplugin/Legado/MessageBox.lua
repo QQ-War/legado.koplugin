@@ -5,6 +5,7 @@ local ConfirmBox = require("ui/widget/confirmbox")
 local Notification = require("ui/widget/notification")
 local Screen = require("device").screen
 local Trapper = require("ui/trapper")
+local logger = require("logger")
 
 local _ = require("gettext")
 
@@ -193,16 +194,40 @@ end
 function M:loading(message, runnable, callback, options)
 
     local message_dialog = self:showloadingMessage(message, options)
+    local done = false
+    local timeout_secs = type(options) == "table" and options.timeout or nil
+    if type(timeout_secs) == "number" and timeout_secs > 0 then
+        UIManager:scheduleIn(timeout_secs, function()
+            if done then return end
+            done = true
+            if message_dialog.close then message_dialog:close() end
+            if type(callback) == "function" then
+                pcall(callback, false, "Task timeout")
+            end
+        end)
+    end
 
     Trapper:wrap(function()
-        local completed, return_values = Trapper:dismissableRunInSubprocess(runnable, message_dialog)
+        local completed, return_values
+        local ok, err = pcall(function()
+            completed, return_values = Trapper:dismissableRunInSubprocess(runnable, message_dialog)
+        end)
 
+        if done then
+            return
+        end
+        done = true
         if message_dialog.close then message_dialog:close() end
         if type(callback) == 'function' then
+            if not ok then
+                logger.err("MessageBox.loading failed: " .. tostring(err))
+                pcall(callback, false, { type = "ERROR", message = tostring(err) })
+                return
+            end
             if not completed then
-                callback(false, "Task was cancelled or failed to complete")
+                pcall(callback, false, "Task was cancelled or failed to complete")
             else
-                callback(true, return_values)
+                pcall(callback, true, return_values)
             end
         end
     end)
