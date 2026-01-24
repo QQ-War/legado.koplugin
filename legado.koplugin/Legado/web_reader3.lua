@@ -273,6 +273,10 @@ function M:getProxyImageUrl(bookUrl, img_src)
     local server_address = self.settings.server_address
     
     local api_root_url = server_address:gsub("/reader3$", "")
+    -- Absolute URLs should be used directly (e.g., /pdfImage).
+    if clean_img_src:match("^https?://") then
+        return clean_img_src
+    end
     -- <img src='__API_ROOT__/book-assets/guest/剑来_/剑来.cbz/index/1.png' />
     local final_img_src = custom_urlEncode(clean_img_src):gsub("^__API_ROOT__", "")
     return socket_url.absolute(api_root_url, final_img_src)
