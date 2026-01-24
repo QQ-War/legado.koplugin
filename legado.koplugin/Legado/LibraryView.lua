@@ -1572,10 +1572,15 @@ local function init_book_menu(parent)
             local filemanagerutil = require("apps/filemanager/filemanagerutil")
             local home_dir = G_reader_settings:readSetting("home_dir") or filemanagerutil.getDefaultDir()
             UIManager:nextTick(function()
-                if FileManager.instance then
-                    FileManager.instance:goHome()
-                elseif home_dir then
-                    FileManager:showFiles(home_dir)
+                local ok, err = pcall(function()
+                    if FileManager.instance then
+                        FileManager.instance:goHome()
+                    elseif home_dir then
+                        FileManager:showFiles(home_dir)
+                    end
+                end)
+                if not ok then
+                    logger.err("返回本地目录失败:", tostring(err))
                 end
             end)
             UIManager:nextTick(function()

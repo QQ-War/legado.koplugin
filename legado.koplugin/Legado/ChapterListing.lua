@@ -155,6 +155,15 @@ function ChapterListing:fetchAndShow(bookinfo, onReturnCallBack, showChapterCall
         MessageBox:error('书籍信息出错')
         return
     end
+    if not H.is_str(bookinfo.bookUrl) then
+        bookinfo.bookUrl = ""
+    end
+    if not H.is_str(bookinfo.name) then
+        bookinfo.name = ""
+    end
+    if not H.is_str(bookinfo.author) then
+        bookinfo.author = ""
+    end
 
     if not H.is_func(onReturnCallBack) then
         onReturnCallBack = function() end
@@ -187,7 +196,7 @@ function ChapterListing:fetchAndShow(bookinfo, onReturnCallBack, showChapterCall
         with_dots = items_with_dots,
         items_per_page = items_per_page,
         items_font_size = items_font_size,
-        subtitle = string.format("%s (%s)%s", bookinfo.name, bookinfo.author, is_stream_image_mode and "[流式]" or "")
+        subtitle = string.format("%s (%s)%s", tostring(bookinfo.name or ""), tostring(bookinfo.author or ""), is_stream_image_mode and "[流式]" or "")
     }
     if visible == true then
         UIManager:show(chapter_listing)
@@ -499,8 +508,12 @@ function ChapterListing:syncProgressShow(chapter)
 end
 
 function ChapterListing:openMenu()
-    
+    if not (self.bookinfo and H.is_str(self.bookinfo.cache_id)) then
+        MessageBox:notice("书籍信息异常")
+        return
+    end
     local dialog
+    local book_name = tostring(self.bookinfo.name or "")
     local buttons = {{},{{
         text = Icons.FA_GLOBE .. " 切换书源",
         callback = function()
@@ -540,7 +553,7 @@ function ChapterListing:openMenu()
         callback = function()
             UIManager:close(dialog)
             MessageBox:confirm(
-                    string.format("《%s》: \n\n (部分书源存在访问频率限制，如遇章节缺失或内容不完整，可尝试: \n  长按章节分章下载、调低并发下载数)", self.bookinfo.name),
+                    string.format("《%s》: \n\n (部分书源存在访问频率限制，如遇章节缺失或内容不完整，可尝试: \n  长按章节分章下载、调低并发下载数)", book_name),
                     function(result)
                         if result then
                             require("Legado/ExportDialog"):new({
