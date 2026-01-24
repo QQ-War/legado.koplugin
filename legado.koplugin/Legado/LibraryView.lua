@@ -87,6 +87,12 @@ end
 function LibraryView:fetchAndShow()
     local is_first = not LibraryView.instance
     local library_obj = LibraryView.instance or self:getInstance()
+    if LibraryView._load_errors and #LibraryView._load_errors > 0 then
+        MessageBox:notice("模块加载失败，请重新同步插件")
+        for _, err in ipairs(LibraryView._load_errors) do
+            logger.err("library view load error: " .. tostring(err))
+        end
+    end
     local use_browser = false
     local widget = use_browser and self:getBrowserWidget() or self:getMenuWidget()
     if widget then
@@ -1771,12 +1777,24 @@ function LibraryView:currentSelectedBook(book)
 end
 
 -- mixins
-local LibraryViewUI = require("Legado/LibraryViewUI")
-local LibraryViewReader = require("Legado/LibraryViewReader")
-local LibraryViewToc = require("Legado/LibraryViewToc")
+local function safe_require(name, errors)
+    local ok, mod = pcall(require, name)
+    if not ok then
+        if errors then table.insert(errors, string.format("%s: %s", name, tostring(mod))) end
+        return {}
+    end
+    return mod
+end
+
+local _load_errors = {}
+local LibraryViewUI = safe_require("Legado/LibraryViewUI", _load_errors)
+local LibraryViewReader = safe_require("Legado/LibraryViewReader", _load_errors)
+local LibraryViewToc = safe_require("Legado/LibraryViewToc", _load_errors)
 
 for k, v in pairs(LibraryViewUI) do LibraryView[k] = v end
 for k, v in pairs(LibraryViewReader) do LibraryView[k] = v end
 for k, v in pairs(LibraryViewToc) do LibraryView[k] = v end
+
+LibraryView._load_errors = _load_errors
 
 return LibraryView

@@ -18,9 +18,19 @@ local Icons = require("Legado/Icons")
 local MessageBox = require("Legado/MessageBox")
 local H = require("Legado/Helper")
 
-local ChapterListingView = require("Legado/ChapterListingView")
-local ChapterListingActions = require("Legado/ChapterListingActions")
-local ChapterListingMenu = require("Legado/ChapterListingMenu")
+local function safe_require(name, errors)
+    local ok, mod = pcall(require, name)
+    if not ok then
+        if errors then table.insert(errors, string.format("%s: %s", name, tostring(mod))) end
+        return {}
+    end
+    return mod
+end
+
+local _load_errors = {}
+local ChapterListingView = safe_require("Legado/ChapterListingView", _load_errors)
+local ChapterListingActions = safe_require("Legado/ChapterListingActions", _load_errors)
+local ChapterListingMenu = safe_require("Legado/ChapterListingMenu", _load_errors)
 
 if not dbg.log then
     dbg.log = logger.dbg
@@ -71,6 +81,13 @@ function ChapterListing:init()
 
     self._ui_refresh_time = os.time()
     self:refreshItems(nil, true)
+
+    if _load_errors and #_load_errors > 0 then
+        MessageBox:notice("目录模块加载失败，请重新同步插件")
+        for _, err in ipairs(_load_errors) do
+            logger.err("chapter listing load error: " .. tostring(err))
+        end
+    end
 end
 
 function ChapterListing:onClose()
