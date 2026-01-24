@@ -413,28 +413,41 @@ function ChapterListing:onSwipe(arg, ges_ev)
 end
 
 function ChapterListing:onRefreshChapters()
-        Backend:closeDbManager()
-        MessageBox:loading("正在刷新章节数据", function()
+    if not Backend.settings_data then
+        Backend:initialize()
+    end
+    if not (self.bookinfo and H.is_str(self.bookinfo.cache_id) and H.is_str(self.bookinfo.bookUrl)) then
+        MessageBox:notice("目录信息不完整，无法刷新")
+        return
+    end
+    Backend:closeDbManager()
+    MessageBox:loading("正在刷新章节数据", function()
+        local ok, response = pcall(function()
             return Backend:refreshChaptersCache({
                 cache_id = self.bookinfo.cache_id,
                 bookUrl = self.bookinfo.bookUrl,
                 origin = self.bookinfo.origin,
                 name = self.bookinfo.name,
             }, self._ui_refresh_time)
-        end, function(state, response)
-            if state == true then
-                Backend:HandleResponse(response, function(data)
-                    MessageBox:notice('同步成功')
-                    self:refreshItems(nil, true)
-                    self.all_chapters_count = nil
-                    self._ui_refresh_time = os.time()
-                end, function(err_msg)
-                    MessageBox:notice(err_msg or '同步失败')
-                    if err_msg ~= '处理中' then
-                        MessageBox:notice("请检查并刷新书架")
-                    end
-                end)
-            end
+        end)
+        if not ok then
+            return { type = "ERROR", message = tostring(response) }
+        end
+        return response
+    end, function(state, response)
+        if state == true then
+            Backend:HandleResponse(response, function(data)
+                MessageBox:notice('同步成功')
+                self:refreshItems(nil, true)
+                self.all_chapters_count = nil
+                self._ui_refresh_time = os.time()
+            end, function(err_msg)
+                MessageBox:notice(err_msg or '同步失败')
+                if err_msg ~= '处理中' then
+                    MessageBox:notice("请检查并刷新书架")
+                end
+            end)
+        end
     end)
 end
 
