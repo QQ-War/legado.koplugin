@@ -1938,7 +1938,9 @@ function M:getBookChapterPlusCache(bookCacheId)
 end
 
 function M:closeDbManager()
-    self.dbManager:closeDB()
+    if self.dbManager and self.dbManager.closeDB then
+        self.dbManager:closeDB()
+    end
 end
 
 function M:cleanBookCache(book_cache_id)
