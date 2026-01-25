@@ -12,7 +12,7 @@ local RELEASE_API = "https://api.github.com/repos/QQ-War/legado.koplugin/release
 local function get_ota_mirrors()
     local settings = LuaSettings:open(H.getUserSettingsPath())
     local data = settings and settings.data or {}
-    return data.ota_api_mirror, data.ota_dl_mirror
+    return data.ota_api_mirror, data.ota_dl_mirror, data.ota_use_mirror
 end
 
 local function to_mirror_download(url, mirror_prefix)
@@ -158,10 +158,18 @@ function M:_getLatestReleaseInfo()
         })
     end
 
-    local ok, err = request_release(RELEASE_API)
-    if not ok then
-        local api_mirror = select(1, get_ota_mirrors())
+    local api_mirror, _, use_mirror = get_ota_mirrors()
+    local ok, err
+    if use_mirror == true then
         if H.is_str(api_mirror) and api_mirror ~= "" then
+            ok, err = request_release(api_mirror)
+        else
+            logger.warn("OTA 镜像开关已开启，但未配置 API 镜像地址")
+            return
+        end
+    else
+        ok, err = request_release(RELEASE_API)
+        if not ok and H.is_str(api_mirror) and api_mirror ~= "" then
             ok, err = request_release(api_mirror)
         end
     end
@@ -255,6 +263,24 @@ function M:_downloadUpdate(release_info)
     end
 
     local url = release_info.download_url
+    local _, dl_mirror, use_mirror = get_ota_mirrors()
+    local mirror_url = to_mirror_download(url, dl_mirror)
+
+    if use_mirror == true then
+        if mirror_url ~= url then
+            local result = download_with_url(mirror_url, 1)
+            if result then
+                return result
+            end
+            local retry = download_with_url(mirror_url, 2)
+            if retry then
+                return retry
+            end
+            return { error = "下载失败" }
+        end
+        return { error = "OTA 镜像未配置" }
+    end
+
     local result, err = download_with_url(url, 1)
     if result then
         return result
@@ -265,8 +291,6 @@ function M:_downloadUpdate(release_info)
         return retry
     end
 
-    local dl_mirror = select(2, get_ota_mirrors())
-    local mirror_url = to_mirror_download(url, dl_mirror)
     if mirror_url ~= url then
         local fallback = download_with_url(mirror_url, 1)
         if fallback then

@@ -321,6 +321,7 @@ function M:initialize()
                 manga_proxy_download = false,
                 ota_api_mirror = nil,
                 ota_dl_mirror = nil,
+                ota_use_mirror = false,
         }
         self.settings_data:flush()
     end

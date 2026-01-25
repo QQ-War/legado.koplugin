@@ -302,7 +302,7 @@ function LibraryView:openMenu(dimen)
         input_dialog = MessageBox:input("", nil, {
             title = "OTA API 镜像地址",
             input = settings.ota_api_mirror or "",
-            input_hint = "留空清除（示例：https://example.com/apigithub/...)",
+            input_hint = "留空清除（示例：https://mirror.example.com/apigithub/...）",
             buttons = {{{
                 text = "保存",
                 is_enter_default = true,
@@ -334,7 +334,7 @@ function LibraryView:openMenu(dimen)
         input_dialog = MessageBox:input("", nil, {
             title = "OTA 下载镜像前缀",
             input = settings.ota_dl_mirror or "",
-            input_hint = "留空清除（示例：https://example.com/dlgithub）",
+            input_hint = "留空清除（示例：https://mirror.example.com/dlgithub）",
             buttons = {{{
                 text = "保存",
                 is_enter_default = true,
@@ -368,6 +368,20 @@ function LibraryView:openMenu(dimen)
             require("Legado/WebConfigDialog"):openWebConfigManager(function()
                 self:clearMenuItems()
                 self:onRefreshLibrary()
+            end)
+        end,
+        align = unified_align,
+    }}, {{
+        text = string.format("%s OTA 镜像开关  %s", Icons.FA_CLOUD,
+            (settings.ota_use_mirror and Icons.UNICODE_STAR or Icons.UNICODE_STAR_OUTLINE)),
+        callback = function()
+            UIManager:close(dialog)
+            local ok_msg = settings.ota_use_mirror and "关闭" or "开启"
+            settings.ota_use_mirror = not settings.ota_use_mirror or false
+            Backend:HandleResponse(Backend:saveSettings(settings), function()
+                MessageBox:notice(string.format("OTA 镜像已%s", ok_msg))
+            end, function(err_msg)
+                MessageBox:error('设置失败:', err_msg)
             end)
         end,
         align = unified_align,
