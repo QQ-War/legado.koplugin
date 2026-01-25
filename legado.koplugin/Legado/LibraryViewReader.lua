@@ -50,6 +50,12 @@ function M:loadAndRenderChapter(chapter)
         self:showReaderUI(cache_chapter)
     else
         Backend:closeDbManager()
+        local request_id = tostring(os.time()) .. "_" .. tostring(math.random(1000, 9999))
+        self._pending_chapter_request = {
+            id = request_id,
+            book_cache_id = chapter.book_cache_id,
+            chapters_index = chapter.chapters_index
+        }
         return MessageBox:loading("正在下载正文", function()
             return Backend:downloadChapter(chapter)
         end, function(state, response)
@@ -59,6 +65,17 @@ function M:loadAndRenderChapter(chapter)
                         MessageBox:error('下载失败')
                         return
                     end
+                    local pending = self._pending_chapter_request
+                    if not (pending and pending.id == request_id) then
+                        MessageBox:notice("下载完成，可在目录中打开")
+                        return
+                    end
+                    if self:readerUiVisible() ~= true then
+                        self._pending_chapter_request = nil
+                        MessageBox:notice("下载完成，可在目录中打开")
+                        return
+                    end
+                    self._pending_chapter_request = nil
                     self:showReaderUI(data)
                 end, function(err_msg)
                     MessageBox:notice("请检查并刷新书架")
