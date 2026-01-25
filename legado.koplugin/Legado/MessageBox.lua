@@ -193,14 +193,26 @@ end
 
 function M:loading(message, runnable, callback, options)
 
+    if type(options) ~= "table" then options = {} end
+    if self._loading_guard and not options.allow_concurrent then
+        self:notice("处理中，请稍候")
+        return
+    end
+    self._loading_guard = true
+
     local message_dialog = self:showloadingMessage(message, options)
     local done = false
+    local function finalize()
+        self._loading_guard = nil
+    end
+
     local timeout_secs = type(options) == "table" and options.timeout or nil
     if type(timeout_secs) == "number" and timeout_secs > 0 then
         UIManager:scheduleIn(timeout_secs, function()
             if done then return end
             done = true
             if message_dialog.close then message_dialog:close() end
+            finalize()
             if type(callback) == "function" then
                 pcall(callback, false, "Task timeout")
             end
@@ -218,6 +230,7 @@ function M:loading(message, runnable, callback, options)
         end
         done = true
         if message_dialog.close then message_dialog:close() end
+        finalize()
         if type(callback) == 'function' then
             if not ok then
                 logger.err("MessageBox.loading failed: " .. tostring(err))
