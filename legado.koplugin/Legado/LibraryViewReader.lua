@@ -56,6 +56,7 @@ function M:loadAndRenderChapter(chapter)
             book_cache_id = chapter.book_cache_id,
             chapters_index = chapter.chapters_index
         }
+        MessageBox:notice("可返回书架，下载将在后台继续")
         return MessageBox:loading("正在下载正文", function()
             return Backend:downloadChapter(chapter)
         end, function(state, response)
