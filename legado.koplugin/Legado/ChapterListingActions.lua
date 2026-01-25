@@ -4,7 +4,6 @@ local UIManager = require("ui/uimanager")
 local NetworkMgr = require("ui/network/manager")
 local Device = require("device")
 local SpinWidget = require("ui/widget/spinwidget")
-local InputDialog = require("ui/widget/inputdialog")
 local ButtonDialog = require("ui/widget/buttondialog")
 
 local Backend = require("Legado/Backend")
@@ -103,7 +102,8 @@ function M:onMenuHold(item)
             MessageBox:notice("章节数为 0")
             return
         end
-        local input = InputDialog:new{
+        local dialog
+        dialog = MessageBox:input("", nil, {
             title = "输入清理范围",
             input = "",
             input_hint = "格式：起始章-结束章（如 5-20），或单章（如 12）",
@@ -111,7 +111,7 @@ function M:onMenuHold(item)
                 text = "清理",
                 is_enter_default = true,
                 callback = function()
-                    local text = input:getInputText()
+                    local text = dialog:getInputText()
                     if not H.is_str(text) or text == "" then
                         return
                     end
@@ -120,18 +120,17 @@ function M:onMenuHold(item)
                         MessageBox:notice("范围格式错误")
                         return
                     end
-                    UIManager:close(input)
+                    UIManager:close(dialog)
                     prompt_clean_range(s - 1, e - 1)
                 end
             }, {
                 text = "取消",
+                id = "close",
                 callback = function()
-                    UIManager:close(input)
+                    UIManager:close(dialog)
                 end
             }}}
-        }
-        UIManager:show(input)
-        input:onShowKeyboard()
+        })
     end
 
     local function prompt_cache_forward(count)
@@ -163,7 +162,8 @@ function M:onMenuHold(item)
             MessageBox:notice("章节数为 0")
             return
         end
-        local input = InputDialog:new{
+        local dialog
+        dialog = MessageBox:input("", nil, {
             title = "输入缓存范围",
             input = "",
             input_hint = "格式：起始章-结束章（如 5-20），或单章（如 12）",
@@ -171,7 +171,7 @@ function M:onMenuHold(item)
                 text = "开始",
                 is_enter_default = true,
                 callback = function()
-                    local text = input:getInputText()
+                    local text = dialog:getInputText()
                     if not H.is_str(text) or text == "" then
                         return
                     end
@@ -180,7 +180,7 @@ function M:onMenuHold(item)
                         MessageBox:notice("范围格式错误")
                         return
                     end
-                    UIManager:close(input)
+                    UIManager:close(dialog)
                     local start_index = s - 1
                     local end_index = e - 1
                     local export = require("Legado/ExportDialog"):new({ bookinfo = self.bookinfo })
@@ -190,13 +190,12 @@ function M:onMenuHold(item)
                 end
             }, {
                 text = "取消",
+                id = "close",
                 callback = function()
-                    UIManager:close(input)
+                    UIManager:close(dialog)
                 end
             }}}
-        }
-        UIManager:show(input)
-        input:onShowKeyboard()
+        })
     end
 
     local function prompt_cache_forward_input()
@@ -208,7 +207,8 @@ function M:onMenuHold(item)
             MessageBox:notice("章节数为 0")
             return
         end
-        local input = InputDialog:new{
+        local dialog
+        dialog = MessageBox:input("", nil, {
             title = "向后缓存章节数",
             input = "",
             input_hint = "输入数字，例如 10",
@@ -216,24 +216,23 @@ function M:onMenuHold(item)
                 text = "开始",
                 is_enter_default = true,
                 callback = function()
-                    local text = input:getInputText()
+                    local text = dialog:getInputText()
                     local n = tonumber(text)
                     if not n or n < 1 then
                         MessageBox:notice("请输入有效数字")
                         return
                     end
-                    UIManager:close(input)
+                    UIManager:close(dialog)
                     prompt_cache_forward(n)
                 end
             }, {
                 text = "取消",
+                id = "close",
                 callback = function()
-                    UIManager:close(input)
+                    UIManager:close(dialog)
                 end
             }}}
-        }
-        UIManager:show(input)
-        input:onShowKeyboard()
+        })
     end
 
     local dialog
