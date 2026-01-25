@@ -155,6 +155,52 @@ function M:onMenuHold(item)
         end)
     end
 
+    local function prompt_cache_range_input()
+        if not self.all_chapters_count then
+            self.all_chapters_count = Backend:getChapterCount(book_cache_id)
+        end
+        local max_chapters = tonumber(self.all_chapters_count) or 0
+        if max_chapters < 1 then
+            MessageBox:notice("章节数为 0")
+            return
+        end
+        local input = InputDialog:new{
+            title = "输入缓存范围",
+            input = "",
+            hint = "格式：起始章-结束章（如 5-20），或单章（如 12）",
+            buttons = {
+                {
+                    text = "开始",
+                    callback = function()
+                        local text = input:getInputText()
+                        if not H.is_str(text) or text == "" then
+                            return
+                        end
+                        local s, e = parse_range_input(text, max_chapters)
+                        if not s then
+                            MessageBox:notice("范围格式错误")
+                            return
+                        end
+                        UIManager:close(input)
+                        local start_index = s - 1
+                        local end_index = e - 1
+                        local export = require("Legado/ExportDialog"):new({ bookinfo = self.bookinfo })
+                        export:cacheSelectedChapters(start_index, end_index - start_index + 1, function()
+                            self:refreshItems(true)
+                        end)
+                    end
+                },
+                {
+                    text = "取消",
+                    callback = function()
+                        UIManager:close(input)
+                    end
+                }
+            }
+        }
+        UIManager:show(input)
+    end
+
     local function prompt_cache_forward_input()
         if not self.all_chapters_count then
             self.all_chapters_count = Backend:getChapterCount(book_cache_id)
@@ -222,6 +268,35 @@ function M:onMenuHold(item)
             callback = function()
                 UIManager:close(dialog)
                 prompt_cache_forward_input()
+            end
+        },
+        {
+            text = table.concat({Icons.FA_DOWNLOAD, " 缓存区间"}),
+            callback = function()
+                UIManager:close(dialog)
+                prompt_cache_range_input()
+            end
+        }
+    }, {
+        {
+            text = table.concat({Icons.FA_DOWNLOAD, " 缓存 +5 章"}),
+            callback = function()
+                UIManager:close(dialog)
+                prompt_cache_forward(5)
+            end
+        },
+        {
+            text = table.concat({Icons.FA_DOWNLOAD, " 缓存 +10 章"}),
+            callback = function()
+                UIManager:close(dialog)
+                prompt_cache_forward(10)
+            end
+        },
+        {
+            text = table.concat({Icons.FA_DOWNLOAD, " 缓存 +20 章"}),
+            callback = function()
+                UIManager:close(dialog)
+                prompt_cache_forward(20)
             end
         }
     }}
