@@ -106,33 +106,32 @@ function M:onMenuHold(item)
         local input = InputDialog:new{
             title = "输入清理范围",
             input = "",
-            hint = "格式：起始章-结束章（如 5-20），或单章（如 12）",
-            buttons = {
-                {
-                    text = "清理",
-                    callback = function()
-                        local text = input:getInputText()
-                        if not H.is_str(text) or text == "" then
-                            return
-                        end
-                        local s, e = parse_range_input(text, max_chapters)
-                        if not s then
-                            MessageBox:notice("范围格式错误")
-                            return
-                        end
-                        UIManager:close(input)
-                        prompt_clean_range(s - 1, e - 1)
+            input_hint = "格式：起始章-结束章（如 5-20），或单章（如 12）",
+            buttons = {{{
+                text = "清理",
+                is_enter_default = true,
+                callback = function()
+                    local text = input:getInputText()
+                    if not H.is_str(text) or text == "" then
+                        return
                     end
-                },
-                {
-                    text = "取消",
-                    callback = function()
-                        UIManager:close(input)
+                    local s, e = parse_range_input(text, max_chapters)
+                    if not s then
+                        MessageBox:notice("范围格式错误")
+                        return
                     end
-                }
-            }
+                    UIManager:close(input)
+                    prompt_clean_range(s - 1, e - 1)
+                end
+            }, {
+                text = "取消",
+                callback = function()
+                    UIManager:close(input)
+                end
+            }}}
         }
         UIManager:show(input)
+        input:onShowKeyboard()
     end
 
     local function prompt_cache_forward(count)
@@ -167,38 +166,37 @@ function M:onMenuHold(item)
         local input = InputDialog:new{
             title = "输入缓存范围",
             input = "",
-            hint = "格式：起始章-结束章（如 5-20），或单章（如 12）",
-            buttons = {
-                {
-                    text = "开始",
-                    callback = function()
-                        local text = input:getInputText()
-                        if not H.is_str(text) or text == "" then
-                            return
-                        end
-                        local s, e = parse_range_input(text, max_chapters)
-                        if not s then
-                            MessageBox:notice("范围格式错误")
-                            return
-                        end
-                        UIManager:close(input)
-                        local start_index = s - 1
-                        local end_index = e - 1
-                        local export = require("Legado/ExportDialog"):new({ bookinfo = self.bookinfo })
-                        export:cacheSelectedChapters(start_index, end_index - start_index + 1, function()
-                            self:refreshItems(true)
-                        end)
+            input_hint = "格式：起始章-结束章（如 5-20），或单章（如 12）",
+            buttons = {{{
+                text = "开始",
+                is_enter_default = true,
+                callback = function()
+                    local text = input:getInputText()
+                    if not H.is_str(text) or text == "" then
+                        return
                     end
-                },
-                {
-                    text = "取消",
-                    callback = function()
-                        UIManager:close(input)
+                    local s, e = parse_range_input(text, max_chapters)
+                    if not s then
+                        MessageBox:notice("范围格式错误")
+                        return
                     end
-                }
-            }
+                    UIManager:close(input)
+                    local start_index = s - 1
+                    local end_index = e - 1
+                    local export = require("Legado/ExportDialog"):new({ bookinfo = self.bookinfo })
+                    export:cacheSelectedChapters(start_index, end_index - start_index + 1, function()
+                        self:refreshItems(true)
+                    end)
+                end
+            }, {
+                text = "取消",
+                callback = function()
+                    UIManager:close(input)
+                end
+            }}}
         }
         UIManager:show(input)
+        input:onShowKeyboard()
     end
 
     local function prompt_cache_forward_input()
@@ -213,30 +211,29 @@ function M:onMenuHold(item)
         local input = InputDialog:new{
             title = "向后缓存章节数",
             input = "",
-            hint = "输入数字，例如 10",
-            buttons = {
-                {
-                    text = "开始",
-                    callback = function()
-                        local text = input:getInputText()
-                        local n = tonumber(text)
-                        if not n or n < 1 then
-                            MessageBox:notice("请输入有效数字")
-                            return
-                        end
-                        UIManager:close(input)
-                        prompt_cache_forward(n)
+            input_hint = "输入数字，例如 10",
+            buttons = {{{
+                text = "开始",
+                is_enter_default = true,
+                callback = function()
+                    local text = input:getInputText()
+                    local n = tonumber(text)
+                    if not n or n < 1 then
+                        MessageBox:notice("请输入有效数字")
+                        return
                     end
-                },
-                {
-                    text = "取消",
-                    callback = function()
-                        UIManager:close(input)
-                    end
-                }
-            }
+                    UIManager:close(input)
+                    prompt_cache_forward(n)
+                end
+            }, {
+                text = "取消",
+                callback = function()
+                    UIManager:close(input)
+                end
+            }}}
         }
         UIManager:show(input)
+        input:onShowKeyboard()
     end
 
     local dialog
