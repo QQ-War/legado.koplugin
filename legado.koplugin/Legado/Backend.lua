@@ -319,6 +319,8 @@ function M:initialize()
                 sync_reading = nil,
                 open_at_last_read = nil,
                 manga_proxy_download = false,
+                ota_api_mirror = nil,
+                ota_dl_mirror = nil,
         }
         self.settings_data:flush()
     end

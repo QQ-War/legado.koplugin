@@ -297,6 +297,70 @@ function LibraryView:openMenu(dimen)
     self:getInstance()
     local unified_align = dimen and "left" or "center"
     local settings = Backend:getSettings()
+    local function edit_ota_api_mirror()
+        local input_dialog
+        input_dialog = MessageBox:input("", nil, {
+            title = "OTA API 镜像地址",
+            input = settings.ota_api_mirror or "",
+            input_hint = "留空清除（示例：https://example.com/apigithub/...)",
+            buttons = {{{
+                text = "保存",
+                is_enter_default = true,
+                callback = function()
+                    local text = input_dialog:getInputText()
+                    if H.is_str(text) and text ~= "" then
+                        settings.ota_api_mirror = text
+                    else
+                        settings.ota_api_mirror = nil
+                    end
+                    UIManager:close(input_dialog)
+                    Backend:HandleResponse(Backend:saveSettings(settings), function()
+                        MessageBox:notice("OTA API 镜像已更新")
+                    end, function(err_msg)
+                        MessageBox:error('设置失败:', err_msg)
+                    end)
+                end
+            }, {
+                text = "取消",
+                id = "close",
+                callback = function()
+                    UIManager:close(input_dialog)
+                end
+            }}}
+        })
+    end
+    local function edit_ota_dl_mirror()
+        local input_dialog
+        input_dialog = MessageBox:input("", nil, {
+            title = "OTA 下载镜像前缀",
+            input = settings.ota_dl_mirror or "",
+            input_hint = "留空清除（示例：https://example.com/dlgithub）",
+            buttons = {{{
+                text = "保存",
+                is_enter_default = true,
+                callback = function()
+                    local text = input_dialog:getInputText()
+                    if H.is_str(text) and text ~= "" then
+                        settings.ota_dl_mirror = text
+                    else
+                        settings.ota_dl_mirror = nil
+                    end
+                    UIManager:close(input_dialog)
+                    Backend:HandleResponse(Backend:saveSettings(settings), function()
+                        MessageBox:notice("OTA 下载镜像已更新")
+                    end, function(err_msg)
+                        MessageBox:error('设置失败:', err_msg)
+                    end)
+                end
+            }, {
+                text = "取消",
+                id = "close",
+                callback = function()
+                    UIManager:close(input_dialog)
+                end
+            }}}
+        })
+    end
     local buttons = {{},{{
         text = Icons.FA_GLOBE .. " Legado WEB地址",
         callback = function()
@@ -319,6 +383,20 @@ function LibraryView:openMenu(dimen)
             end, function(err_msg)
                 MessageBox:error('设置失败:', err_msg)
             end)
+        end,
+        align = unified_align,
+    }}, {{
+        text = Icons.FA_CLOUD .. " OTA API 镜像",
+        callback = function()
+            UIManager:close(dialog)
+            edit_ota_api_mirror()
+        end,
+        align = unified_align,
+    }}, {{
+        text = Icons.FA_DOWNLOAD .. " OTA 下载镜像",
+        callback = function()
+            UIManager:close(dialog)
+            edit_ota_dl_mirror()
         end,
         align = unified_align,
     }}, {{

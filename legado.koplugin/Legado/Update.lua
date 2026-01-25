@@ -8,12 +8,17 @@ local LuaSettings = require("luasettings")
 local M = {}
 
 local RELEASE_API = "https://api.github.com/repos/QQ-War/legado.koplugin/releases/tags/ci-build-main"
-local RELEASE_API_MIRROR = "https://blog.nevermore.page/apigithub/repos/QQ-War/legado.koplugin/releases/tags/ci-build-main"
-local RELEASE_MIRROR_DL = "https://blog.nevermore.page/dlgithub"
 
-local function to_mirror_download(url)
-    if H.is_str(url) and url:find("^https?://github%.com/") then
-        return url:gsub("^https?://github%.com", RELEASE_MIRROR_DL)
+local function get_ota_mirrors()
+    local settings = LuaSettings:open(H.getUserSettingsPath())
+    local data = settings and settings.data or {}
+    return data.ota_api_mirror, data.ota_dl_mirror
+end
+
+local function to_mirror_download(url, mirror_prefix)
+    if H.is_str(mirror_prefix) and mirror_prefix ~= "" and H.is_str(url)
+        and url:find("^https?://github%.com/") then
+        return url:gsub("^https?://github%.com", mirror_prefix)
     end
     return url
 end
@@ -155,7 +160,10 @@ function M:_getLatestReleaseInfo()
 
     local ok, err = request_release(RELEASE_API)
     if not ok then
-        ok, err = request_release(RELEASE_API_MIRROR)
+        local api_mirror = select(1, get_ota_mirrors())
+        if H.is_str(api_mirror) and api_mirror ~= "" then
+            ok, err = request_release(api_mirror)
+        end
     end
     if not (ok and H.is_tbl(err) and err.data) then
         logger.warn("获取版本失败：", err)
@@ -257,7 +265,8 @@ function M:_downloadUpdate(release_info)
         return retry
     end
 
-    local mirror_url = to_mirror_download(url)
+    local dl_mirror = select(2, get_ota_mirrors())
+    local mirror_url = to_mirror_download(url, dl_mirror)
     if mirror_url ~= url then
         local fallback = download_with_url(mirror_url, 1)
         if fallback then
