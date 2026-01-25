@@ -207,7 +207,7 @@ function M:_downloadUpdate(release_info)
         }
     end
 
-    local function download_with_url(url)
+    local function download_with_url(url, attempt)
         local asset_name = release_info.asset_name
         local temp_path_base = H.getTempDirectory()
         local temp_zip_path = string.format("%s/%s", temp_path_base, asset_name)
@@ -227,8 +227,8 @@ function M:_downloadUpdate(release_info)
             url = url,
             method = "GET",
             file = file,
-            timeout = 30,
-            maxtime = 300,
+            timeout = 60,
+            maxtime = 900,
             redirect = true,
         }
 
@@ -247,14 +247,19 @@ function M:_downloadUpdate(release_info)
     end
 
     local url = release_info.download_url
-    local result, err = download_with_url(url)
+    local result, err = download_with_url(url, 1)
     if result then
         return result
     end
 
+    local retry = download_with_url(url, 2)
+    if retry then
+        return retry
+    end
+
     local mirror_url = to_mirror_download(url)
     if mirror_url ~= url then
-        local fallback = download_with_url(mirror_url)
+        local fallback = download_with_url(mirror_url, 1)
         if fallback then
             return fallback
         end
