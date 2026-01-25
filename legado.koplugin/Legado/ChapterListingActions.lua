@@ -4,6 +4,7 @@ local UIManager = require("ui/uimanager")
 local NetworkMgr = require("ui/network/manager")
 local Device = require("device")
 local SpinWidget = require("ui/widget/spinwidget")
+local InputDialog = require("ui/widget/inputdialog")
 local ButtonDialog = require("ui/widget/buttondialog")
 
 local Backend = require("Legado/Backend")
@@ -93,6 +94,105 @@ function M:onMenuHold(item)
         )
     end
 
+    local function prompt_clean_range_input()
+        if not self.all_chapters_count then
+            self.all_chapters_count = Backend:getChapterCount(book_cache_id)
+        end
+        local max_chapters = tonumber(self.all_chapters_count) or 0
+        if max_chapters < 1 then
+            MessageBox:notice("章节数为 0")
+            return
+        end
+        local input = InputDialog:new{
+            title = "输入清理范围",
+            input = "",
+            hint = "格式：起始章-结束章（如 5-20），或单章（如 12）",
+            buttons = {
+                {
+                    text = "清理",
+                    callback = function()
+                        local text = input:getInputText()
+                        if not H.is_str(text) or text == "" then
+                            return
+                        end
+                        local s, e = parse_range_input(text, max_chapters)
+                        if not s then
+                            MessageBox:notice("范围格式错误")
+                            return
+                        end
+                        UIManager:close(input)
+                        prompt_clean_range(s - 1, e - 1)
+                    end
+                },
+                {
+                    text = "取消",
+                    callback = function()
+                        UIManager:close(input)
+                    end
+                }
+            }
+        }
+        UIManager:show(input)
+    end
+
+    local function prompt_cache_forward(count)
+        if not H.is_num(count) or count < 1 then
+            return
+        end
+        if not self.all_chapters_count then
+            self.all_chapters_count = Backend:getChapterCount(book_cache_id)
+        end
+        local max_chapters = tonumber(self.all_chapters_count) or 0
+        if max_chapters < 1 then
+            MessageBox:notice("章节数为 0")
+            return
+        end
+        local start_index = chapters_index + 1
+        local target_count = math.min(max_chapters, chapters_index + count + 1)
+        local export = require("Legado/ExportDialog"):new({ bookinfo = self.bookinfo })
+        export:cacheSelectedChapters(start_index, target_count - start_index, function()
+            self:refreshItems(true)
+        end)
+    end
+
+    local function prompt_cache_forward_input()
+        if not self.all_chapters_count then
+            self.all_chapters_count = Backend:getChapterCount(book_cache_id)
+        end
+        local max_chapters = tonumber(self.all_chapters_count) or 0
+        if max_chapters < 1 then
+            MessageBox:notice("章节数为 0")
+            return
+        end
+        local input = InputDialog:new{
+            title = "向后缓存章节数",
+            input = "",
+            hint = "输入数字，例如 10",
+            buttons = {
+                {
+                    text = "开始",
+                    callback = function()
+                        local text = input:getInputText()
+                        local n = tonumber(text)
+                        if not n or n < 1 then
+                            MessageBox:notice("请输入有效数字")
+                            return
+                        end
+                        UIManager:close(input)
+                        prompt_cache_forward(n)
+                    end
+                },
+                {
+                    text = "取消",
+                    callback = function()
+                        UIManager:close(input)
+                    end
+                }
+            }
+        }
+        UIManager:show(input)
+    end
+
     local dialog
     local buttons = {{
         {
@@ -113,7 +213,15 @@ function M:onMenuHold(item)
             text = table.concat({Icons.FA_TRASH, " 清理区间"}),
             callback = function()
                 UIManager:close(dialog)
-                prompt_clean_range(chapters_index)
+                prompt_clean_range_input()
+            end
+        }
+    }, {
+        {
+            text = table.concat({Icons.FA_DOWNLOAD, " 向后缓存"}),
+            callback = function()
+                UIManager:close(dialog)
+                prompt_cache_forward_input()
             end
         }
     }}
