@@ -7,8 +7,16 @@ local LuaSettings = require("luasettings")
 
 local M = {}
 
-local RELEASE_API = "https://blog.nevermore.page/apigithub/repos/QQ-War/legado.koplugin/releases/tags/ci-build-main"
+local RELEASE_API = "https://api.github.com/repos/QQ-War/legado.koplugin/releases/tags/ci-build-main"
+local RELEASE_API_MIRROR = "https://blog.nevermore.page/apigithub/repos/QQ-War/legado.koplugin/releases/tags/ci-build-main"
 local RELEASE_MIRROR_DL = "https://blog.nevermore.page/dlgithub"
+
+local function to_mirror_download(url)
+    if H.is_str(url) and url:find("^https?://github%.com/") then
+        return url:gsub("^https?://github%.com", RELEASE_MIRROR_DL)
+    end
+    return url
+end
 
 function M:_getUpdateSettings()
     return LuaSettings:open(H.getUserSettingsPath())
@@ -134,14 +142,21 @@ function M:ota(ok_callback)
 end
 
 function M:_getLatestReleaseInfo()
-    local ok, err = makeRequest({
-        url = RELEASE_API,
-        timeout = 10,
-        maxtime = 20,
-        headers = {
-            ["Accept"] = "application/vnd.github.v3+json"
-        }
-    })
+    local function request_release(url)
+        return makeRequest({
+            url = url,
+            timeout = 10,
+            maxtime = 20,
+            headers = {
+                ["Accept"] = "application/vnd.github.v3+json"
+            }
+        })
+    end
+
+    local ok, err = request_release(RELEASE_API)
+    if not ok then
+        ok, err = request_release(RELEASE_API_MIRROR)
+    end
     if not (ok and H.is_tbl(err) and err.data) then
         logger.warn("获取版本失败：", err)
         return
@@ -172,9 +187,6 @@ function M:_getLatestReleaseInfo()
 
     local asset = assets[1]
     local download_url = asset.browser_download_url
-    if H.is_str(download_url) and download_url:find("^https?://github%.com/") then
-        download_url = download_url:gsub("^https?://github%.com", RELEASE_MIRROR_DL)
-    end
     local asset_name = asset.name or "legado_plugin_update.zip"
     local updated_at = asset.updated_at or release_info.published_at
     return {
@@ -195,43 +207,60 @@ function M:_downloadUpdate(release_info)
         }
     end
 
+    local function download_with_url(url)
+        local asset_name = release_info.asset_name
+        local temp_path_base = H.getTempDirectory()
+        local temp_zip_path = string.format("%s/%s", temp_path_base, asset_name)
+
+        if util.fileExists(temp_zip_path) then
+            os.remove(temp_zip_path)
+        end
+
+        local file, err_open = io.open(temp_zip_path, "wb")
+        if not file then
+            return nil, {
+                error = "downloadUpdate: io.open path error"
+            }
+        end
+
+        local http_options = {
+            url = url,
+            method = "GET",
+            file = file,
+            timeout = 30,
+            maxtime = 300,
+            redirect = true,
+        }
+
+        local ok, err = makeRequest(http_options)
+        if not ok then
+            pcall(os.remove, temp_zip_path)
+            return nil, {
+                error = "Download network request failed: " .. tostring(err)
+            }
+        end
+
+        return {
+            state = true,
+            path = temp_zip_path
+        }
+    end
+
     local url = release_info.download_url
-    local asset_name = release_info.asset_name
-    local temp_path_base = H.getTempDirectory()
-    local temp_zip_path = string.format("%s/%s", temp_path_base, asset_name)
-
-    if util.fileExists(temp_zip_path) then
-        os.remove(temp_zip_path)
+    local result, err = download_with_url(url)
+    if result then
+        return result
     end
 
-    local file, err_open = io.open(temp_zip_path, "wb")
-    if not file then
-        return {
-            error = "downloadUpdate: io.open path error"
-        }
+    local mirror_url = to_mirror_download(url)
+    if mirror_url ~= url then
+        local fallback = download_with_url(mirror_url)
+        if fallback then
+            return fallback
+        end
     end
 
-    local http_options = {
-        url = url,
-        method = "GET",
-        file = file,
-        timeout = 30,
-        maxtime = 300,
-        redirect = true,
-    }
-
-    local ok, err = makeRequest(http_options)
-    if not ok then
-        pcall(os.remove, temp_zip_path)
-        return {
-            error = "Download network request failed: " .. tostring(err)
-        }
-    end
-
-    return {
-        state = true,
-        path = temp_zip_path
-    }
+    return err or { error = "下载失败" }
 end
 
 -- return true or err_string
