@@ -7,7 +7,8 @@ local LuaSettings = require("luasettings")
 
 local M = {}
 
-local RELEASE_API = "https://api.github.com/repos/QQ-War/legado.koplugin/releases/tags/ci-build-main"
+local RELEASE_API = "https://blog.nevermore.page/apigithub/repos/QQ-War/legado.koplugin/releases/tags/ci-build-main"
+local RELEASE_MIRROR_DL = "https://blog.nevermore.page/dlgithub"
 
 function M:_getUpdateSettings()
     return LuaSettings:open(H.getUserSettingsPath())
@@ -171,6 +172,9 @@ function M:_getLatestReleaseInfo()
 
     local asset = assets[1]
     local download_url = asset.browser_download_url
+    if H.is_str(download_url) and download_url:find("^https?://github%.com/") then
+        download_url = download_url:gsub("^https?://github%.com", RELEASE_MIRROR_DL)
+    end
     local asset_name = asset.name or "legado_plugin_update.zip"
     local updated_at = asset.updated_at or release_info.published_at
     return {
