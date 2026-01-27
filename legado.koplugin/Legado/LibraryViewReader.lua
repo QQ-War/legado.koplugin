@@ -21,34 +21,39 @@ function M:loadAndRenderChapter(chapter)
     end
 
     if chapter.cacheExt == 'cbz' then
-        local cache_chapter = Backend:getCacheChapterFilePath(chapter)
-        if not NetworkMgr:isConnected() then
-            if (H.is_tbl(cache_chapter) and H.is_str(cache_chapter.cacheFilePath)) then
-                self:showReaderUI(cache_chapter)
-            else
-                MessageBox:error("需要网络连接")
-            end
-            return
-        end
-        MessageBox:notice("流式漫画开启")
-        self:afterCloseReaderUi(function()
-            local ex_chapter = chapter
-            self.stream_view = require("Legado/StreamImageView"):fetchAndShow({
-                chapter = ex_chapter,
-                on_return_callback = function()
-                    local bookinfo = Backend:getBookInfoCache(ex_chapter.book_cache_id)
-                    --self:openLastReadChapter(bookinfo)
-                    self:showBookTocDialog(bookinfo)
-                end,
-            })
-            UIManager:nextTick(function()
-                local cache_chapter_inner = Backend:getCacheChapterFilePath(ex_chapter)
-                if not (H.is_tbl(cache_chapter_inner) and H.is_str(cache_chapter_inner.cacheFilePath)) then
-                    Backend:preLoadingChapters({ex_chapter}, 1)
+        local book_cache_id = chapter.book_cache_id
+        local extras_settings = Backend:getBookExtras(book_cache_id)
+        local stream_mode = not (H.is_tbl(extras_settings.data) and extras_settings.data.stream_image_view == false)
+        if stream_mode then
+            local cache_chapter = Backend:getCacheChapterFilePath(chapter)
+            if not NetworkMgr:isConnected() then
+                if (H.is_tbl(cache_chapter) and H.is_str(cache_chapter.cacheFilePath)) then
+                    self:showReaderUI(cache_chapter)
+                else
+                    MessageBox:error("需要网络连接")
                 end
+                return
+            end
+            MessageBox:notice("流式漫画开启")
+            self:afterCloseReaderUi(function()
+                local ex_chapter = chapter
+                self.stream_view = require("Legado/StreamImageView"):fetchAndShow({
+                    chapter = ex_chapter,
+                    on_return_callback = function()
+                        local bookinfo = Backend:getBookInfoCache(ex_chapter.book_cache_id)
+                        --self:openLastReadChapter(bookinfo)
+                        self:showBookTocDialog(bookinfo)
+                    end,
+                })
+                UIManager:nextTick(function()
+                    local cache_chapter_inner = Backend:getCacheChapterFilePath(ex_chapter)
+                    if not (H.is_tbl(cache_chapter_inner) and H.is_str(cache_chapter_inner.cacheFilePath)) then
+                        Backend:preLoadingChapters({ex_chapter}, 1)
+                    end
+                end)
             end)
-        end)
-        return 
+            return 
+        end
     end
 
     local cache_chapter = Backend:getCacheChapterFilePath(chapter)
