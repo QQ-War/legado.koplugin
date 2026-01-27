@@ -297,6 +297,7 @@ function LibraryView:openMenu(dimen)
     self:getInstance()
     local unified_align = dimen and "left" or "center"
     local settings = Backend:getSettings()
+
     local function edit_ota_api_mirror()
         local input_dialog
         input_dialog = MessageBox:input("", nil, {
@@ -329,6 +330,7 @@ function LibraryView:openMenu(dimen)
             }}}
         })
     end
+
     local function edit_ota_dl_mirror()
         local input_dialog
         input_dialog = MessageBox:input("", nil, {
@@ -361,6 +363,128 @@ function LibraryView:openMenu(dimen)
             }}}
         })
     end
+
+    local function openOtaSettingsCustom()
+        local ota_dialog
+        local ota_buttons = {{{
+            text = string.format("%s OTA 镜像开关  %s", Icons.FA_CLOUD,
+                (settings.ota_use_mirror and Icons.UNICODE_STAR or Icons.UNICODE_STAR_OUTLINE)),
+            callback = function()
+                UIManager:close(ota_dialog)
+                local ok_msg = settings.ota_use_mirror and "关闭" or "开启"
+                settings.ota_use_mirror = not settings.ota_use_mirror or false
+                Backend:HandleResponse(Backend:saveSettings(settings), function()
+                    MessageBox:notice(string.format("OTA 镜像已%s", ok_msg))
+                end, function(err_msg)
+                    MessageBox:error('设置失败:', err_msg)
+                end)
+            end,
+        }}, {{
+            text = Icons.FA_CLOUD .. " OTA API 镜像",
+            callback = function()
+                UIManager:close(ota_dialog)
+                edit_ota_api_mirror()
+            end,
+        }}, {{
+            text = Icons.FA_DOWNLOAD .. " OTA 下载镜像",
+            callback = function()
+                UIManager:close(ota_dialog)
+                edit_ota_dl_mirror()
+            end,
+        }}}
+        ota_dialog = require("ui/widget/buttondialog"):new{
+            title = "OTA 镜像设置",
+            title_align = "center",
+            buttons = ota_buttons,
+        }
+        UIManager:show(ota_dialog)
+    end
+
+    local function openDownloadSettingsCustom()
+        local dl_dialog
+        local dl_buttons = {{{
+            text = string.format("%s 下载线程数: %d", Icons.FA_DOWNLOAD, settings.download_threads or 1),
+            callback = function()
+                UIManager:close(dl_dialog)
+                local SpinWidget = require("ui/widget/spinwidget")
+                local thread_spin = SpinWidget:new{
+                    value = settings.download_threads or 1,
+                    value_min = 1,
+                    value_max = 16,
+                    value_step = 1,
+                    value_hold_step = 2,
+                    ok_text = "确定",
+                    title_text = "设置下载线程数",
+                    info_text = "建议根据网络状况选择 4–8 线程\n（如下载异常，可尝试调为 1）",
+                    callback = function(spin)
+                        local threads = spin.value
+                        settings.download_threads = threads
+                        Backend:HandleResponse(Backend:saveSettings(settings), function()
+                            MessageBox:notice(string.format("下载线程数已设置为: %d", threads))
+                        end, function(err_msg)
+                            MessageBox:error('设置失败：', tostring(err_msg))
+                        end)
+                    end
+                }
+                UIManager:show(thread_spin)
+            end,
+        }}, {{
+            text = string.format("%s 文字预下载数: %d", Icons.FA_DOWNLOAD, settings.pre_download_text or 3),
+            callback = function()
+                UIManager:close(dl_dialog)
+                local SpinWidget = require("ui/widget/spinwidget")
+                local text_spin = SpinWidget:new{
+                    value = settings.pre_download_text or 3,
+                    value_min = 0,
+                    value_max = 50,
+                    value_step = 1,
+                    ok_text = "确定",
+                    title_text = "文字预下载数量",
+                    info_text = "阅读时，自动后台缓存的后续章节数",
+                    callback = function(spin)
+                        settings.pre_download_text = spin.value
+                        Backend:HandleResponse(Backend:saveSettings(settings), function()
+                            MessageBox:notice(string.format("文字预下载数已设置为: %d", spin.value))
+                        end, function(err_msg)
+                            MessageBox:error('设置失败：', tostring(err_msg))
+                        end)
+                    end
+                }
+                UIManager:show(text_spin)
+            end,
+        }}, {{
+            text = string.format("%s 漫画预下载数: %d", Icons.FA_IMAGE, settings.pre_download_comic or 1),
+            callback = function()
+                UIManager:close(dl_dialog)
+                local SpinWidget = require("ui/widget/spinwidget")
+                local comic_spin = SpinWidget:new{
+                    value = settings.pre_download_comic or 1,
+                    value_min = 0,
+                    value_max = 20,
+                    value_step = 1,
+                    ok_text = "确定",
+                    title_text = "漫画预下载数量",
+                    info_text = "阅读时，自动后台缓存的后续章节数\n(漫画文件较大，建议设置在 1-5 之间)",
+                    callback = function(spin)
+                        settings.pre_download_comic = spin.value
+                        Backend:HandleResponse(Backend:saveSettings(settings), function()
+                            MessageBox:notice(string.format("漫画预下载数已设置为: %d", spin.value))
+                        end, function(err_msg)
+                            MessageBox:error('设置失败：', tostring(err_msg))
+                        end)
+                    end
+                }
+                UIManager:show(comic_spin)
+            end,
+        }}}
+        dl_dialog = require("ui/widget/buttondialog"):new{
+            title = "下载相关设置",
+            title_align = "center",
+            buttons = dl_buttons,
+        }
+        UIManager:show(dl_dialog)
+    end
+
     local buttons = {{},{{
         text = Icons.FA_GLOBE .. " Legado WEB地址",
         callback = function()
@@ -372,17 +496,10 @@ function LibraryView:openMenu(dimen)
         end,
         align = unified_align,
     }}, {{
-        text = string.format("%s OTA 镜像开关  %s", Icons.FA_CLOUD,
-            (settings.ota_use_mirror and Icons.UNICODE_STAR or Icons.UNICODE_STAR_OUTLINE)),
+        text = Icons.FA_CLOUD .. " OTA 镜像设置",
         callback = function()
             UIManager:close(dialog)
-            local ok_msg = settings.ota_use_mirror and "关闭" or "开启"
-            settings.ota_use_mirror = not settings.ota_use_mirror or false
-            Backend:HandleResponse(Backend:saveSettings(settings), function()
-                MessageBox:notice(string.format("OTA 镜像已%s", ok_msg))
-            end, function(err_msg)
-                MessageBox:error('设置失败:', err_msg)
-            end)
+            openOtaSettingsCustom()
         end,
         align = unified_align,
     }}, {{
@@ -397,20 +514,6 @@ function LibraryView:openMenu(dimen)
             end, function(err_msg)
                 MessageBox:error('设置失败:', err_msg)
             end)
-        end,
-        align = unified_align,
-    }}, {{
-        text = Icons.FA_CLOUD .. " OTA API 镜像",
-        callback = function()
-            UIManager:close(dialog)
-            edit_ota_api_mirror()
-        end,
-        align = unified_align,
-    }}, {{
-        text = Icons.FA_DOWNLOAD .. " OTA 下载镜像",
-        callback = function()
-            UIManager:close(dialog)
-            edit_ota_dl_mirror()
         end,
         align = unified_align,
     }}, {{
@@ -477,80 +580,10 @@ function LibraryView:openMenu(dimen)
         end,
         align = unified_align,
     }}, {{
-        text = string.format("%s 下载线程数: %d", Icons.FA_DOWNLOAD, settings.download_threads or 1),
+        text = Icons.FA_DOWNLOAD .. " 下载相关设置",
         callback = function()
             UIManager:close(dialog)
-            local SpinWidget = require("ui/widget/spinwidget")
-            local thread_spin = SpinWidget:new{
-                value = settings.download_threads or 1,
-                value_min = 1,
-                value_max = 16,
-                value_step = 1,
-                value_hold_step = 2,
-                ok_text = "确定",
-                title_text = "设置下载线程数",
-                info_text = "建议根据网络状况选择 4–8 线程\n（如下载异常，可尝试调为 1）",
-                callback = function(spin)
-                    local threads = spin.value
-                    settings.download_threads = threads
-                    Backend:HandleResponse(Backend:saveSettings(settings), function()
-                        MessageBox:notice(string.format("下载线程数已设置为: %d", threads))
-                    end, function(err_msg)
-                        MessageBox:error('设置失败：', tostring(err_msg))
-                    end)
-                end
-            }
-            UIManager:show(thread_spin)
-        end,
-        align = unified_align,
-    }}, {{
-        text = string.format("%s 文字预下载数: %d", Icons.FA_DOWNLOAD, settings.pre_download_text or 3),
-        callback = function()
-            UIManager:close(dialog)
-            local SpinWidget = require("ui/widget/spinwidget")
-            local text_spin = SpinWidget:new{
-                value = settings.pre_download_text or 3,
-                value_min = 0,
-                value_max = 50,
-                value_step = 1,
-                ok_text = "确定",
-                title_text = "文字预下载数量",
-                info_text = "阅读时，自动后台缓存的后续章节数",
-                callback = function(spin)
-                    settings.pre_download_text = spin.value
-                    Backend:HandleResponse(Backend:saveSettings(settings), function()
-                        MessageBox:notice(string.format("文字预下载数已设置为: %d", spin.value))
-                    end, function(err_msg)
-                        MessageBox:error('设置失败：', tostring(err_msg))
-                    end)
-                end
-            }
-            UIManager:show(text_spin)
-        end,
-        align = unified_align,
-    }}, {{
-        text = string.format("%s 漫画预下载数: %d", Icons.FA_IMAGE, settings.pre_download_comic or 1),
-        callback = function()
-            UIManager:close(dialog)
-            local SpinWidget = require("ui/widget/spinwidget")
-            local comic_spin = SpinWidget:new{
-                value = settings.pre_download_comic or 1,
-                value_min = 0,
-                value_max = 20,
-                value_step = 1,
-                ok_text = "确定",
-                title_text = "漫画预下载数量",
-                info_text = "阅读时，自动后台缓存的后续章节数\n(漫画文件较大，建议设置在 1-5 之间)",
-                callback = function(spin)
-                    settings.pre_download_comic = spin.value
-                    Backend:HandleResponse(Backend:saveSettings(settings), function()
-                        MessageBox:notice(string.format("漫画预下载数已设置为: %d", spin.value))
-                    end, function(err_msg)
-                        MessageBox:error('设置失败：', tostring(err_msg))
-                    end)
-                end
-            }
-            UIManager:show(comic_spin)
+            openDownloadSettingsCustom()
         end,
         align = unified_align,
     }}, {{
