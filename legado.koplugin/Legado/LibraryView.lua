@@ -364,6 +364,39 @@ function LibraryView:openMenu(dimen)
         })
     end
 
+    local function edit_ota_obj_mirror()
+        local input_dialog
+        input_dialog = MessageBox:input("", nil, {
+            title = "OTA 对象镜像前缀",
+            input = settings.ota_obj_mirror or "",
+            input_hint = "留空清除（示例：https://mirror.example.com/obj）",
+            buttons = {{{
+                text = "保存",
+                is_enter_default = true,
+                callback = function()
+                    local text = input_dialog:getInputText()
+                    if H.is_str(text) and text ~= "" then
+                        settings.ota_obj_mirror = text
+                    else
+                        settings.ota_obj_mirror = nil
+                    end
+                    UIManager:close(input_dialog)
+                    Backend:HandleResponse(Backend:saveSettings(settings), function()
+                        MessageBox:notice("OTA 对象镜像已更新")
+                    end, function(err_msg)
+                        MessageBox:error('设置失败:', err_msg)
+                    end)
+                end
+            }, {
+                text = "取消",
+                id = "close",
+                callback = function()
+                    UIManager:close(input_dialog)
+                end
+            }}}
+        })
+    end
+
     local function openOtaSettingsCustom()
         local ota_dialog
         local ota_buttons = {{{
@@ -390,6 +423,12 @@ function LibraryView:openMenu(dimen)
             callback = function()
                 UIManager:close(ota_dialog)
                 edit_ota_dl_mirror()
+            end,
+        }}, {{
+            text = Icons.FA_CLOUD_DOWNLOAD .. " OTA 对象镜像",
+            callback = function()
+                UIManager:close(ota_dialog)
+                edit_ota_obj_mirror()
             end,
         }}}
         ota_dialog = require("ui/widget/buttondialog"):new{

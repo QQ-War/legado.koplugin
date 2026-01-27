@@ -12,14 +12,24 @@ local RELEASE_API = "https://api.github.com/repos/QQ-War/legado.koplugin/release
 local function get_ota_mirrors()
     local settings = LuaSettings:open(H.getUserSettingsPath())
     local data = settings and settings.data or {}
-    return data.ota_api_mirror, data.ota_dl_mirror, data.ota_use_mirror
+    return data.ota_api_mirror, data.ota_dl_mirror, data.ota_obj_mirror, data.ota_use_mirror
 end
 
-local function to_mirror_download(url, mirror_prefix)
-    if H.is_str(mirror_prefix) and mirror_prefix ~= "" and H.is_str(url)
+local function to_mirror_download(url, mirror_prefix, obj_prefix)
+    if not H.is_str(url) then
+        return url
+    end
+
+    if H.is_str(obj_prefix) and obj_prefix ~= ""
+        and url:find("^https?://objects%.githubusercontent%.com/") then
+        return url:gsub("^https?://objects%.githubusercontent%.com", obj_prefix)
+    end
+
+    if H.is_str(mirror_prefix) and mirror_prefix ~= ""
         and url:find("^https?://github%.com/") then
         return url:gsub("^https?://github%.com", mirror_prefix)
     end
+
     return url
 end
 
@@ -158,7 +168,7 @@ function M:_getLatestReleaseInfo()
         })
     end
 
-    local api_mirror, _, use_mirror = get_ota_mirrors()
+    local api_mirror, _, _, use_mirror = get_ota_mirrors()
     local ok, err
     if use_mirror == true then
         if H.is_str(api_mirror) and api_mirror ~= "" then
@@ -263,8 +273,8 @@ function M:_downloadUpdate(release_info)
     end
 
     local url = release_info.download_url
-    local _, dl_mirror, use_mirror = get_ota_mirrors()
-    local mirror_url = to_mirror_download(url, dl_mirror)
+    local _, dl_mirror, obj_mirror, use_mirror = get_ota_mirrors()
+    local mirror_url = to_mirror_download(url, dl_mirror, obj_mirror)
 
     if use_mirror == true then
         if mirror_url ~= url then
