@@ -403,6 +403,19 @@ function LibraryView:openMenu(dimen)
     local function openDownloadSettingsCustom()
         local dl_dialog
         local dl_buttons = {{{
+            text = string.format("%s 漫画代理下载  %s", Icons.FA_IMAGE,
+                (settings.manga_proxy_download and Icons.UNICODE_STAR or Icons.UNICODE_STAR_OUTLINE)),
+            callback = function()
+                UIManager:close(dl_dialog)
+                local ok_msg = settings.manga_proxy_download and "关闭" or "开启"
+                settings.manga_proxy_download = not settings.manga_proxy_download or nil
+                Backend:HandleResponse(Backend:saveSettings(settings), function(data)
+                    MessageBox:notice(string.format("代理下载已%s", ok_msg))
+                end, function(err_msg)
+                    MessageBox:error('设置失败:', err_msg)
+                end)
+            end,
+        }}, {{
             text = string.format("%s 下载线程数: %d", Icons.FA_DOWNLOAD, settings.download_threads or 1),
             callback = function()
                 UIManager:close(dl_dialog)
@@ -500,20 +513,6 @@ function LibraryView:openMenu(dimen)
         callback = function()
             UIManager:close(dialog)
             openOtaSettingsCustom()
-        end,
-        align = unified_align,
-    }}, {{
-        text = string.format("%s 漫画代理下载  %s", Icons.FA_IMAGE,
-            (settings.manga_proxy_download and Icons.UNICODE_STAR or Icons.UNICODE_STAR_OUTLINE)),
-        callback = function()
-            UIManager:close(dialog)
-            local ok_msg = settings.manga_proxy_download and "关闭" or "开启"
-            settings.manga_proxy_download = not settings.manga_proxy_download or nil
-            Backend:HandleResponse(Backend:saveSettings(settings), function(data)
-                MessageBox:notice(string.format("代理下载已%s", ok_msg))
-            end, function(err_msg)
-                MessageBox:error('设置失败:', err_msg)
-            end)
         end,
         align = unified_align,
     }}, {{
