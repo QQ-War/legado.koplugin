@@ -308,7 +308,40 @@ function M:onMenuHold(item)
 end
 
 function M:getStreamModeItem(on_close_callback, on_changed_callback)
-    return nil
+    if not (self.bookinfo and H.is_str(self.bookinfo.cache_id)) then
+        return nil
+    end
+    if self.bookinfo.cacheExt ~= 'cbz' then
+        return nil
+    end
+
+    local function is_stream_image_mode()
+        local extras_settings = Backend:getBookExtras(self.bookinfo.cache_id)
+        return H.is_tbl(extras_settings.data) and extras_settings.data.stream_image_view == true
+    end
+
+    return {{
+        text = Icons.FA_IMAGE .. " 流式漫画模式",
+        keep_menu_open = true,
+        help_text = "在线获取内容",
+        callback = function()
+            local extras_settings = Backend:getBookExtras(self.bookinfo.cache_id)
+            if not H.is_tbl(extras_settings) then
+                MessageBox:notice("设置读取失败")
+                return
+            end
+            local new_state = not is_stream_image_mode()
+            extras_settings:saveSetting("stream_image_view", new_state):flush()
+            if H.is_func(on_close_callback) then
+                pcall(on_close_callback)
+            end
+            if H.is_func(on_changed_callback) then
+                pcall(on_changed_callback, new_state)
+            end
+            MessageBox:notice(new_state and "已开启流式漫画" or "已关闭流式漫画")
+        end,
+        align = "left",
+    }}
 end
 
 function M:onSwipe(arg, ges_ev)
