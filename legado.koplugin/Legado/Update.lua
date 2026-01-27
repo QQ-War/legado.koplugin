@@ -15,15 +15,21 @@ local function get_ota_mirrors()
     return data.ota_api_mirror, data.ota_dl_mirror, data.ota_obj_mirror, data.ota_use_mirror
 end
 
-local function to_mirror_download(url, mirror_prefix)
-    if not (H.is_str(mirror_prefix) and mirror_prefix ~= "" and H.is_str(url)) then
+local function to_mirror_download(url, mirror_prefix, obj_prefix)
+    if not H.is_str(url) then
         return url
     end
-    if url:find("^https?://github%.com/") then
-        return url:gsub("^https?://github%.com", mirror_prefix)
-    elseif url:find("^https?://objects%.githubusercontent%.com/") then
-        return url:gsub("^https?://objects%.githubusercontent%.com", mirror_prefix .. "/obj")
+
+    if H.is_str(obj_prefix) and obj_prefix ~= ""
+        and url:find("^https?://objects%.githubusercontent%.com/") then
+        return url:gsub("^https?://objects%.githubusercontent%.com", obj_prefix)
     end
+
+    if H.is_str(mirror_prefix) and mirror_prefix ~= ""
+        and url:find("^https?://github%.com/") then
+        return url:gsub("^https?://github%.com", mirror_prefix)
+    end
+
     return url
 end
 

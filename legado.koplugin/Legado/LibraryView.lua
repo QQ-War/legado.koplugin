@@ -336,7 +336,7 @@ function LibraryView:openMenu(dimen)
         input_dialog = MessageBox:input("", nil, {
             title = "OTA 下载镜像前缀",
             input = settings.ota_dl_mirror or "",
-            input_hint = "留空清除（示例：https://mirror.com/gh，自动映射 /obj/）",
+            input_hint = "留空清除（示例：https://mirror.example.com/dlgithub）",
             buttons = {{{
                 text = "保存",
                 is_enter_default = true,
