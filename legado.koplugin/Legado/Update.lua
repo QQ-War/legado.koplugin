@@ -8,6 +8,7 @@ local LuaSettings = require("luasettings")
 local M = {}
 
 local RELEASE_API = "https://api.github.com/repos/QQ-War/legado.koplugin/releases/tags/ci-build-main"
+local RELEASE_API_PATH = "/repos/QQ-War/legado.koplugin/releases/tags/ci-build-main"
 
 local function get_ota_mirrors()
     local settings = LuaSettings:open(H.getUserSettingsPath())
@@ -15,22 +16,52 @@ local function get_ota_mirrors()
     return data.ota_api_mirror, data.ota_dl_mirror, data.ota_obj_mirror, data.ota_use_mirror
 end
 
+local function normalize_prefix(prefix)
+    if not H.is_str(prefix) then
+        return nil
+    end
+    return prefix:gsub("/+$", "")
+end
+
+local function join_prefix(prefix, path)
+    prefix = normalize_prefix(prefix)
+    if not (H.is_str(prefix) and prefix ~= "" and H.is_str(path)) then
+        return nil
+    end
+    return prefix .. path
+end
+
 local function to_mirror_download(url, mirror_prefix, obj_prefix)
     if not H.is_str(url) then
         return url
     end
+    mirror_prefix = normalize_prefix(mirror_prefix)
+    obj_prefix = normalize_prefix(obj_prefix)
 
     if H.is_str(obj_prefix) and obj_prefix ~= ""
         and url:find("^https?://objects%.githubusercontent%.com/") then
-        return url:gsub("^https?://objects%.githubusercontent%.com", obj_prefix)
+        local path = url:gsub("^https?://objects%.githubusercontent%.com", "")
+        return obj_prefix .. path
     end
 
     if H.is_str(mirror_prefix) and mirror_prefix ~= ""
         and url:find("^https?://github%.com/") then
-        return url:gsub("^https?://github%.com", mirror_prefix)
+        local path = url:gsub("^https?://github%.com", "")
+        return mirror_prefix .. path
     end
 
     return url
+end
+
+local function resolve_api_url(api_mirror)
+    api_mirror = normalize_prefix(api_mirror)
+    if not (H.is_str(api_mirror) and api_mirror ~= "") then
+        return nil
+    end
+    if api_mirror:find("/repos/") then
+        return api_mirror
+    end
+    return join_prefix(api_mirror, RELEASE_API_PATH)
 end
 
 function M:_getUpdateSettings()
@@ -171,16 +202,18 @@ function M:_getLatestReleaseInfo()
     local api_mirror, _, _, use_mirror = get_ota_mirrors()
     local ok, err
     if use_mirror == true then
-        if H.is_str(api_mirror) and api_mirror ~= "" then
-            ok, err = request_release(api_mirror)
+        local api_url = resolve_api_url(api_mirror)
+        if H.is_str(api_url) and api_url ~= "" then
+            ok, err = request_release(api_url)
         else
             logger.warn("OTA 镜像开关已开启，但未配置 API 镜像地址")
             return
         end
     else
         ok, err = request_release(RELEASE_API)
-        if not ok and H.is_str(api_mirror) and api_mirror ~= "" then
-            ok, err = request_release(api_mirror)
+        local api_url = resolve_api_url(api_mirror)
+        if not ok and H.is_str(api_url) and api_url ~= "" then
+            ok, err = request_release(api_url)
         end
     end
     if not (ok and H.is_tbl(err) and err.data) then

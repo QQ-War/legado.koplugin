@@ -303,7 +303,7 @@ function LibraryView:openMenu(dimen)
         input_dialog = MessageBox:input("", nil, {
             title = "OTA API 镜像地址",
             input = settings.ota_api_mirror or "",
-            input_hint = "留空清除（示例：https://mirror.example.com/apigithub/...）",
+            input_hint = "留空清除（示例：https://mirror.example.com/apigithub）",
             buttons = {{{
                 text = "保存",
                 is_enter_default = true,
