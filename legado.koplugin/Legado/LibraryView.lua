@@ -1189,34 +1189,6 @@ function LibraryView:initializeRegisterEvent(parent_ref)
             text = "Legado 书目",
             sorting_hint = "search",
             sub_item_table = {{
-                text = "流式漫画模式",
-                keep_menu_open = true,
-                help_text = "在线获取内容",
-                checked_func = function()
-                    local library_obj = library_ref:getInstance()
-                    local book_cache_id = library_obj:getReadingBookId()
-                    if book_cache_id then
-                        local extras_settings = Backend:getBookExtras(book_cache_id)
-                        return not (H.is_tbl(extras_settings.data) and extras_settings.data.stream_image_view == false)
-                    end
-                    return false
-                end,
-                callback = function() 
-                    local library_obj = library_ref:getInstance()
-                    local reading_chapter = library_obj:readingChapter()
-                    local toc_obj = library_obj:getBookTocWidget()
-                    if reading_chapter and toc_obj then
-                        local stream_mode_item = toc_obj:getStreamModeItem(nil, function()
-                            library_obj:loadAndRenderChapter(reading_chapter)
-                        end)
-                        if H.is_tbl(stream_mode_item) and H.is_tbl(stream_mode_item[1]) and H.is_func(stream_mode_item[1].callback) then
-                            stream_mode_item[1].callback()
-                        else
-                            return MessageBox:error("当前阅读不是漫画类型, 设置无效")
-                        end
-                    end
-                end,
-            }, {
                 text = "强制刷新本章",
                 separator = true,
                 callback = function()
