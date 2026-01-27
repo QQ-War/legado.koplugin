@@ -425,7 +425,7 @@ function LibraryView:openMenu(dimen)
                 edit_ota_dl_mirror()
             end,
         }}, {{
-            text = Icons.FA_CLOUD_DOWNLOAD .. " OTA 对象镜像",
+            text = Icons.FA_CLOUD .. " OTA 对象镜像",
             callback = function()
                 UIManager:close(ota_dialog)
                 edit_ota_obj_mirror()
