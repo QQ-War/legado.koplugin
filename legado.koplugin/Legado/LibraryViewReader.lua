@@ -39,6 +39,12 @@ function M:loadAndRenderChapter(chapter)
                         self:showBookTocDialog(bookinfo)
                     end,
                 })
+                UIManager:nextTick(function()
+                    local cache_chapter = Backend:getCacheChapterFilePath(ex_chapter)
+                    if not (H.is_tbl(cache_chapter) and H.is_str(cache_chapter.cacheFilePath)) then
+                        Backend:preLoadingChapters({ex_chapter}, 1)
+                    end
+                end)
             end)
             return 
         end
