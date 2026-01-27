@@ -504,6 +504,56 @@ function LibraryView:openMenu(dimen)
         end,
         align = unified_align,
     }}, {{
+        text = string.format("%s 文字预下载数: %d", Icons.FA_DOWNLOAD, settings.pre_download_text or 3),
+        callback = function()
+            UIManager:close(dialog)
+            local SpinWidget = require("ui/widget/spinwidget")
+            local text_spin = SpinWidget:new{
+                value = settings.pre_download_text or 3,
+                value_min = 0,
+                value_max = 50,
+                value_step = 1,
+                ok_text = "确定",
+                title_text = "文字预下载数量",
+                info_text = "阅读时，自动后台缓存的后续章节数",
+                callback = function(spin)
+                    settings.pre_download_text = spin.value
+                    Backend:HandleResponse(Backend:saveSettings(settings), function()
+                        MessageBox:notice(string.format("文字预下载数已设置为: %d", spin.value))
+                    end, function(err_msg)
+                        MessageBox:error('设置失败：', tostring(err_msg))
+                    end)
+                end
+            }
+            UIManager:show(text_spin)
+        end,
+        align = unified_align,
+    }}, {{
+        text = string.format("%s 漫画预下载数: %d", Icons.FA_IMAGE, settings.pre_download_comic or 1),
+        callback = function()
+            UIManager:close(dialog)
+            local SpinWidget = require("ui/widget/spinwidget")
+            local comic_spin = SpinWidget:new{
+                value = settings.pre_download_comic or 1,
+                value_min = 0,
+                value_max = 20,
+                value_step = 1,
+                ok_text = "确定",
+                title_text = "漫画预下载数量",
+                info_text = "阅读时，自动后台缓存的后续章节数\n(漫画文件较大，建议设置在 1-5 之间)",
+                callback = function(spin)
+                    settings.pre_download_comic = spin.value
+                    Backend:HandleResponse(Backend:saveSettings(settings), function()
+                        MessageBox:notice(string.format("漫画预下载数已设置为: %d", spin.value))
+                    end, function(err_msg)
+                        MessageBox:error('设置失败：', tostring(err_msg))
+                    end)
+                end
+            }
+            UIManager:show(comic_spin)
+        end,
+        align = unified_align,
+    }}, {{
         text = string.format("%s Clear all caches", Icons.FA_TRASH),
         callback = function()
             UIManager:close(dialog)

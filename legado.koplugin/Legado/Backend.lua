@@ -2342,11 +2342,17 @@ function M:after_reader_chapter_show(chapter)
         if chapter.isRead ~= true then
             local complete_count = self:getcompleteReadAheadChapters(chapter)
             if complete_count < 40 then
+                local settings = self:getSettings()
                 local preDownloadNum = 3
                 if chapter.cacheExt and chapter.cacheExt == 'cbz' then
-                    preDownloadNum = 1
+                    preDownloadNum = tonumber(settings.pre_download_comic) or 1
+                else
+                    preDownloadNum = tonumber(settings.pre_download_text) or 3
                 end
-                self:preLoadingChapters(chapter, preDownloadNum)
+                
+                if preDownloadNum > 0 then
+                    self:preLoadingChapters(chapter, preDownloadNum)
+                end
             end
         end
     end
