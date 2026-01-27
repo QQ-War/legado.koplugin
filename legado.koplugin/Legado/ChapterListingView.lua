@@ -95,7 +95,9 @@ function M:fetchAndShow(bookinfo, onReturnCallBack, showChapterCallBack, accept_
     if bookinfo.cacheExt == 'cbz' then
         local extras_settings = Backend:getBookExtras(bookinfo.cache_id)
         if H.is_tbl(extras_settings) and H.is_tbl(extras_settings.data) then
-            is_stream_image_mode = extras_settings.data.stream_image_view == true
+            is_stream_image_mode = extras_settings.data.stream_image_view ~= false
+        else
+            is_stream_image_mode = true
         end
     end
 
