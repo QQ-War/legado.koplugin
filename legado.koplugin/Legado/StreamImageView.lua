@@ -284,7 +284,7 @@ function M:getTurnPageNextImageT(call_event_type, image_num)
                 retData['new_chapter_imglist'] = new_chapter_imglist
 
                 local new_image_num = (call_event_type == 'next') and 1 or #new_chapter_imglist
-                local img_src = self.chapter_imglist[new_image_num]
+                local img_src = new_chapter_imglist[new_image_num]
 
                 local image_data = downloadImage(img_src)
                 if image_data then

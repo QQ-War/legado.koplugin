@@ -108,53 +108,49 @@ function M:openMenu()
                                     Backend:closeDbManager()
                                     MessageBox:loading("统计中", function()
                                         return Backend:analyzeCacheStatus(self.bookinfo.cache_id)
-                                    end, function(state, response)
+                                    end, function(state, data)
                                         if state == true then
-                                            Backend:HandleResponse(response, function(data)
-                                                if not (H.is_tbl(data) and H.is_tbl(data.cached_chapters)) then
-                                                    MessageBox:notice("未发现缓存")
-                                                    return
+                                            if not (H.is_tbl(data) and H.is_tbl(data.cached_chapters)) then
+                                                MessageBox:notice("未发现缓存")
+                                                return
+                                            end
+                                            local indices = {}
+                                            for _, c in ipairs(data.cached_chapters) do
+                                                if c.chapters_index ~= nil then
+                                                    table.insert(indices, c.chapters_index)
                                                 end
-                                                local indices = {}
-                                                for _, c in ipairs(data.cached_chapters) do
-                                                    if c.chapters_index ~= nil then
-                                                        table.insert(indices, c.chapters_index)
-                                                    end
+                                            end
+                                            table.sort(indices)
+                                            if #indices == 0 then
+                                                MessageBox:notice("未发现缓存")
+                                                return
+                                            end
+                                            local ranges = {}
+                                            local start = indices[1]
+                                            local last = indices[1]
+                                            for i = 2, #indices do
+                                                local v = indices[i]
+                                                if v == last + 1 then
+                                                    last = v
+                                                else
+                                                    table.insert(ranges, {start, last})
+                                                    start = v
+                                                    last = v
                                                 end
-                                                table.sort(indices)
-                                                if #indices == 0 then
-                                                    MessageBox:notice("未发现缓存")
-                                                    return
+                                            end
+                                            table.insert(ranges, {start, last})
+                                            local parts = {}
+                                            for _, r in ipairs(ranges) do
+                                                local s = r[1] + 1
+                                                local e = r[2] + 1
+                                                if s == e then
+                                                    table.insert(parts, tostring(s))
+                                                else
+                                                    table.insert(parts, string.format("%d-%d", s, e))
                                                 end
-                                                local ranges = {}
-                                                local start = indices[1]
-                                                local last = indices[1]
-                                                for i = 2, #indices do
-                                                    local v = indices[i]
-                                                    if v == last + 1 then
-                                                        last = v
-                                                    else
-                                                        table.insert(ranges, {start, last})
-                                                        start = v
-                                                        last = v
-                                                    end
-                                                end
-                                                table.insert(ranges, {start, last})
-                                                local parts = {}
-                                                for _, r in ipairs(ranges) do
-                                                    local s = r[1] + 1
-                                                    local e = r[2] + 1
-                                                    if s == e then
-                                                        table.insert(parts, tostring(s))
-                                                    else
-                                                        table.insert(parts, string.format("%d-%d", s, e))
-                                                    end
-                                                end
-                                                local msg = "已缓存章节区间：\n" .. table.concat(parts, ", ")
-                                                MessageBox:confirm(msg, function() end, { ok_text = "确定", cancel_text = "关闭" })
-                                            end, function(err_msg)
-                                                MessageBox:error('失败：', err_msg)
-                                            end)
+                                            end
+                                            local msg = "已缓存章节区间：\n" .. table.concat(parts, ", ")
+                                            MessageBox:confirm(msg, function() end, { ok_text = "确定", cancel_text = "关闭" })
                                         end
                                     end)
                                 end,

@@ -78,7 +78,7 @@ function M:onMenuHold(item)
                 if not result then return end
                 Backend:closeDbManager()
                 MessageBox:loading("清理中 ", function()
-                    return Backend:cleanChaptersCache(book_cache_id, start, finish)
+                    return Backend:cleanChapterCacheRange(book_cache_id, start, finish)
                 end, function(state, response)
                     if state == true then
                         Backend:HandleResponse(response, function(data)
