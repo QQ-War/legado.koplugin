@@ -311,15 +311,7 @@ function M:_downloadUpdate(release_info)
 
     if use_mirror == true then
         if mirror_url ~= url then
-            local result = download_with_url(mirror_url, 1)
-            if result then
-                return result
-            end
-            local retry = download_with_url(mirror_url, 2)
-            if retry then
-                return retry
-            end
-            return { error = "下载失败" }
+            return download_with_url(mirror_url, 1) or { error = "下载失败" }
         end
         return { error = "OTA 镜像未配置" }
     end
@@ -327,11 +319,6 @@ function M:_downloadUpdate(release_info)
     local result, err = download_with_url(url, 1)
     if result then
         return result
-    end
-
-    local retry = download_with_url(url, 2)
-    if retry then
-        return retry
     end
 
     if mirror_url ~= url then
