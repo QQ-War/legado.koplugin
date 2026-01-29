@@ -7,33 +7,8 @@ local ReaderUI = require("apps/reader/readerui")
 local util = require("util")
 local logger = require("logger")
 local H = require("Legado/Helper")
-local lfs = require("lfs")
 
 local M = {}
-
-local function cbz_has_images(path)
-    if not (H.is_str(path) and util.fileExists(path)) then
-        return false
-    end
-    local ok_archiver, Archiver = pcall(require, "ffi/archiver")
-    if ok_archiver and Archiver and Archiver.Reader then
-        local reader = Archiver.Reader:new()
-        if not reader:open(path) then
-            return false
-        end
-        local has_image = false
-        for entry in reader:iterate() do
-            if entry and entry.path and entry.path:lower():match("%.png$|%.jpe?g$|%.webp$") then
-                has_image = true
-                break
-            end
-        end
-        reader:close()
-        return has_image
-    end
-    local attr = lfs.attributes(path)
-    return attr and attr.size and attr.size > 1024
-end
 
 function M:afterCloseReaderUi(callback)
     self:openLegadoFolder(nil, nil, nil, callback)
@@ -72,14 +47,6 @@ function M:loadAndRenderChapter(chapter)
     local cache_chapter = Backend:getCacheChapterFilePath(chapter)
 
     if (H.is_tbl(cache_chapter) and H.is_str(cache_chapter.cacheFilePath)) then
-        if chapter.cacheExt == "cbz" and not cbz_has_images(cache_chapter.cacheFilePath) then
-            local bookinfo = Backend:getBookInfoCache(chapter.book_cache_id)
-            MessageBox:error("文件格式不支持或文件无效")
-            if H.is_tbl(bookinfo) then
-                self:showBookTocDialog(bookinfo)
-            end
-            return
-        end
         self:showReaderUI(cache_chapter)
     else
         self._pending_chapter_requests = self._pending_chapter_requests or {}
