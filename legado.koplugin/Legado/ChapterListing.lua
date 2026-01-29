@@ -113,10 +113,7 @@ function ChapterListing:onCloseWidget()
 end
 
 function ChapterListing:updateReturnCallback(callback)
-    -- Skip changes when callback is nil
-    if H.is_func(callback) then
-        self.on_return_callback = callback
-    end
+    self.on_return_callback = callback
 end
 
 -- mixins
