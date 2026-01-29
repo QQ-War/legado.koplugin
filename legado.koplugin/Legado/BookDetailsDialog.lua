@@ -24,6 +24,9 @@ local ButtonTable = require("ui/widget/buttontable")
 local util = require("util")
 local Device = require("device")
 local Backend = require("Legado/Backend")
+local MessageBox = require("Legado/MessageBox")
+local Icons = require("Legado/Icons")
+local H = require("Legado/Helper")
 
 local Screen = Device.screen
 
@@ -139,6 +142,132 @@ function BookDetails:getButtonGroup(other_elements_height)
         end
     end
     if self.has_reload_btn then
+        table.insert(buttons, {
+            text = "缓存管理",
+            callback = function()
+                local book_name = tostring(self.bookinfo.name or "")
+                MessageBox:confirm(
+                    string.format("《%s》: \n\n (部分书源存在访问频率限制，如遇章节缺失或内容不完整，可尝试: \n  长按章节分章下载、调低并发下载数)", book_name),
+                    function(result)
+                        if result then
+                            require("Legado/ExportDialog"):new({
+                                bookinfo = self.bookinfo
+                            }):cacheAllChapters(function(success)
+                                if success then MessageBox:notice("缓存任务已提交") end
+                            end)
+                        end
+                    end,
+                    {
+                        ok_text = "缓存全书",
+                        cancel_text = "取消",
+                        other_buttons_first = true,
+                        other_buttons = {{
+                            {
+                                text = "导出书籍",
+                                callback = function()
+                                    require("Legado/ExportDialog"):new({ bookinfo = self.bookinfo }):exportBook()
+                                end,
+                            }, {
+                                text = "清理已读",
+                                callback = function()
+                                    MessageBox:confirm(
+                                        "请确认清理本书已读章节的缓存：\n",
+                                        function(result)
+                                            if not result then return end
+                                            Backend:closeDbManager()
+                                            MessageBox:loading("清理中 ", function()
+                                                return Backend:cleanReadChapterCache(self.bookinfo.cache_id)
+                                            end, function(state, response)
+                                                if state == true then
+                                                    Backend:HandleResponse(response, function(data)
+                                                        MessageBox:success(tostring(data or "清理完成"))
+                                                    end, function(err_msg)
+                                                        MessageBox:error('失败：', err_msg)
+                                                    end)
+                                                end
+                                            end)
+                                        end)
+                                end,
+                            }, {
+                                text = "查看已缓存区间",
+                                callback = function()
+                                    Backend:closeDbManager()
+                                    MessageBox:loading("统计中", function()
+                                        return Backend:analyzeCacheStatus(self.bookinfo.cache_id)
+                                    end, function(state, data)
+                                        if state == true then
+                                            if not (H.is_tbl(data) and H.is_tbl(data.cached_chapters)) then
+                                                MessageBox:notice("未发现缓存")
+                                                return
+                                            end
+                                            local indices = {}
+                                            for _, c in ipairs(data.cached_chapters) do
+                                                if c.chapters_index ~= nil then
+                                                    table.insert(indices, c.chapters_index)
+                                                end
+                                            end
+                                            table.sort(indices)
+                                            if #indices == 0 then
+                                                MessageBox:notice("未发现缓存")
+                                                return
+                                            end
+                                            local ranges = {}
+                                            local start = indices[1]
+                                            local last = indices[1]
+                                            for i = 2, #indices do
+                                                local v = indices[i]
+                                                if v == last + 1 then
+                                                    last = v
+                                                else
+                                                    table.insert(ranges, {start, last})
+                                                    start = v
+                                                    last = v
+                                                end
+                                            end
+                                            table.insert(ranges, {start, last})
+                                            local parts = {}
+                                            for _, r in ipairs(ranges) do
+                                                local s = r[1] + 1
+                                                local e = r[2] + 1
+                                                if s == e then
+                                                    table.insert(parts, tostring(s))
+                                                else
+                                                    table.insert(parts, string.format("%d-%d", s, e))
+                                                end
+                                            end
+                                            local msg = "已缓存章节区间：\n" .. table.concat(parts, ", ")
+                                            MessageBox:confirm(msg, function() end, { ok_text = "确定", cancel_text = "关闭" })
+                                        end
+                                    end)
+                                end,
+                            }, {
+                                text = "清除全书",
+                                callback = function()
+                                    MessageBox:confirm(
+                                        "请确认清除本书所有缓存：\n",
+                                        function(result)
+                                            if not result then return end
+                                            Backend:closeDbManager()
+                                            MessageBox:loading("清理中 ", function()
+                                                return Backend:cleanBookCache(self.bookinfo.cache_id)
+                                            end, function(state, response)
+                                                if state == true then
+                                                    Backend:HandleResponse(response, function(data)
+                                                        MessageBox:success("已清理")
+                                                        self:_reload()
+                                                    end, function(err_msg)
+                                                        MessageBox:error('请稍后重试：', err_msg)
+                                                    end)
+                                                end
+                                            end)
+                                        end)
+                                end,
+                            }
+                        }}
+                    }
+                )
+            end,
+        })
         table.insert(buttons, {
             text = "封面刷新",
             callback = function()
