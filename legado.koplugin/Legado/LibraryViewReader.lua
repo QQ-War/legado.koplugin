@@ -49,6 +49,14 @@ function M:loadAndRenderChapter(chapter)
     if (H.is_tbl(cache_chapter) and H.is_str(cache_chapter.cacheFilePath)) then
         self:showReaderUI(cache_chapter)
     else
+        if H.is_tbl(self._pending_chapter_request)
+            and self._pending_chapter_request.book_cache_id == chapter.book_cache_id
+            and self._pending_chapter_request.chapters_index == chapter.chapters_index then
+            local Notification = require("ui/widget/notification")
+            Notification:notify("该章节正在后台下载", Notification.SOURCE_ALWAYS_SHOW)
+            return
+        end
+
         local request_id = tostring(os.time()) .. "_" .. tostring(math.random(1000, 9999))
         self._pending_chapter_request = {
             id = request_id,
@@ -63,9 +71,12 @@ function M:loadAndRenderChapter(chapter)
         Backend:launchProcess(function()
             return Backend:_pDownloadChapter(chapter)
         end, function(status, response, r2)
-            if status == true and H.is_tbl(response) and response.cacheFilePath then
-                -- 在主进程中更新数据库缓存路径
-                Backend.dbManager:updateCacheFilePath(response, response.cacheFilePath)
+            if status == true and H.is_tbl(response) and H.is_str(response.cacheFilePath) then
+                if Backend.dbManager and Backend.dbManager.updateCacheFilePath then
+                    Backend.dbManager:updateCacheFilePath(response, response.cacheFilePath)
+                else
+                    MessageBox:error("缓存写入失败：DB未就绪")
+                end
 
                 local pending = self._pending_chapter_request
                 if not (pending and pending.id == request_id) then
@@ -82,7 +93,7 @@ function M:loadAndRenderChapter(chapter)
                     Notification:notify("下载完成，已可阅读", Notification.SOURCE_ALWAYS_SHOW)
                 end
             else
-                local err_msg = response or r2 or "下载失败"
+                local err_msg = (H.is_tbl(response) and response.message) or response or r2 or "下载失败"
                 MessageBox:error(err_msg)
             end
         end)

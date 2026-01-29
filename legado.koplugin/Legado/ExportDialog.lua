@@ -572,10 +572,9 @@ function M:startCacheChapters(bookinfo, uncached_chapters, chapter_count, retry_
         Notification:notify(string.format("<<%s>> 缓存完成", bookinfo.name), Notification.SOURCE_ALWAYS_SHOW)
 
         if not skip_cache_integrity_check then
-            -- 检查完整性可以在后台静默进行，或者在完成时由用户手动检查
-            if H.is_func(completion_callback) then
-                completion_callback(true)
-            end
+            self:checkCacheIntegrity(bookinfo, chapter_count, completion_callback, function()
+                retry_func()
+            end)
         else
             if H.is_func(completion_callback) then
                 completion_callback(true)
