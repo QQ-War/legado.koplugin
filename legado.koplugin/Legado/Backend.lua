@@ -144,6 +144,7 @@ local function pDownload_CreateCBZ(self, chapter, filePath, img_sources, bookUrl
     local cbz_lib
     local no_compression
     local mtime
+    local downloaded_count = 0
 
     -- 20250525 PR # 2090: Archive.Writer replaces ZipWriter
     local ok , ZipWriter = pcall(require, "ffi/zipwriter")
@@ -231,6 +232,7 @@ local function pDownload_CreateCBZ(self, chapter, filePath, img_sources, bookUrl
             else
                 cbz:addFileFromMemory(img_name, imgdata, mtime)
             end
+            downloaded_count = downloaded_count + 1
 
         else
             dbg.v('Download_Image err', tostring(err))
@@ -241,6 +243,13 @@ local function pDownload_CreateCBZ(self, chapter, filePath, img_sources, bookUrl
         cbz:close()
     end
     dbg.v('CreateCBZ cbz:close')
+
+    if downloaded_count == 0 then
+        if util.fileExists(cbz_path_tmp) then
+            util.removeFile(cbz_path_tmp)
+        end
+        error("No images downloaded for CBZ")
+    end
 
     if util.fileExists(filePath) ~= true then
         os.rename(cbz_path_tmp, filePath)

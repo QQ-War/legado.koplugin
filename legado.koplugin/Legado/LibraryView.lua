@@ -1409,7 +1409,7 @@ local function init_book_browser(parent)
     end
 
     function book_browser:goHome()
-        if FileManager.instance then
+        if FileManager.instance and FileManager.instance.goHome then
             FileManager.instance:goHome()
         end
     end
@@ -1618,7 +1618,7 @@ local function init_book_menu(parent)
             local home_dir = G_reader_settings:readSetting("home_dir") or filemanagerutil.getDefaultDir()
             UIManager:nextTick(function()
                 local ok, err = pcall(function()
-                    if FileManager.instance then
+                    if FileManager.instance and FileManager.instance.goHome then
                         FileManager.instance:goHome()
                     elseif home_dir then
                         FileManager:showFiles(home_dir)
