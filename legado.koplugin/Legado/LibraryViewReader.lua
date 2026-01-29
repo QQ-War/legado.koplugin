@@ -49,42 +49,43 @@ function M:loadAndRenderChapter(chapter)
     if (H.is_tbl(cache_chapter) and H.is_str(cache_chapter.cacheFilePath)) then
         self:showReaderUI(cache_chapter)
     else
-        Backend:closeDbManager()
         local request_id = tostring(os.time()) .. "_" .. tostring(math.random(1000, 9999))
         self._pending_chapter_request = {
             id = request_id,
             book_cache_id = chapter.book_cache_id,
             chapters_index = chapter.chapters_index
         }
-        MessageBox:notice("可返回书架，下载将在后台继续")
-        return MessageBox:loading("正在下载正文", function()
-            return Backend:downloadChapter(chapter)
-        end, function(state, response)
-            if state == true then
-                Backend:HandleResponse(response, function(data)
-                    if not H.is_tbl(data) or not H.is_str(data.cacheFilePath) then
-                        MessageBox:error('下载失败')
-                        return
-                    end
-                    local pending = self._pending_chapter_request
-                    if not (pending and pending.id == request_id) then
-                        MessageBox:notice("下载完成，可在目录中打开")
-                        return
-                    end
-                    if self:readerUiVisible() ~= true then
-                        self._pending_chapter_request = nil
-                        MessageBox:notice("下载完成，可在目录中打开")
-                        return
-                    end
-                    self._pending_chapter_request = nil
-                    self:showReaderUI(data)
-                end, function(err_msg)
-                    MessageBox:notice("请检查并刷新书架")
-                    MessageBox:error(err_msg or '错误')
-                end)
-            end
+        
+        -- 发起非阻塞通知
+        local Notification = require("ui/widget/notification")
+        Notification:notify("正在后台下载正文", Notification.SOURCE_ALWAYS_SHOW)
 
-        end, { dismissable = true })
+        Backend:launchProcess(function()
+            return Backend:_pDownloadChapter(chapter)
+        end, function(status, response, r2)
+            if status == true and H.is_tbl(response) and response.cacheFilePath then
+                -- 在主进程中更新数据库缓存路径
+                Backend.dbManager:updateCacheFilePath(response, response.cacheFilePath)
+
+                local pending = self._pending_chapter_request
+                if not (pending and pending.id == request_id) then
+                    Notification:notify("下载完成: " .. (chapter.title or ""), Notification.SOURCE_ALWAYS_SHOW)
+                    return
+                end
+                
+                -- 如果还在当前书架/目录视图，且没有切换书籍，则自动打开
+                if not ReaderUI.instance then
+                    self._pending_chapter_request = nil
+                    self:showReaderUI(response)
+                else
+                    self._pending_chapter_request = nil
+                    Notification:notify("下载完成，已可阅读", Notification.SOURCE_ALWAYS_SHOW)
+                end
+            else
+                local err_msg = response or r2 or "下载失败"
+                MessageBox:error(err_msg)
+            end
+        end)
     end
 end
 

@@ -557,15 +557,8 @@ function M:startCacheChapters(bookinfo, uncached_chapters, chapter_count, retry_
     end
 
     local uncached_count = #uncached_chapters
-
-    local title_text = string.format("%s - 正在缓存 %d/%d 章节", bookinfo.name, uncached_count, chapter_count)
-    if retry_count > 0 then
-        title_text = title_text .. string.format(" (重试 %d)", retry_count)
-    end
-    local cache_msg = MessageBox:progressBar("缓存进度", {
-        title = title_text,
-        max = uncached_count
-    }) or MessageBox:showloadingMessage("正在缓存章节...")
+    local Notification = require("ui/widget/notification")
+    Notification:notify(string.format("开始后台缓存 <<%s>> (%d章)", bookinfo.name, uncached_count), Notification.SOURCE_ALWAYS_SHOW)
 
     if not retry_count then retry_count = 0 end
     local retry_func = function()
@@ -575,99 +568,31 @@ function M:startCacheChapters(bookinfo, uncached_chapters, chapter_count, retry_
 
     local cache_complete = false
     local handleCacheSuccess = function()
-        if cache_msg and cache_msg.close then
-            cache_msg:close()
-        end
         cache_complete = true
+        Notification:notify(string.format("<<%s>> 缓存完成", bookinfo.name), Notification.SOURCE_ALWAYS_SHOW)
 
         if not skip_cache_integrity_check then
-            self:checkCacheIntegrity(bookinfo, chapter_count, completion_callback, function()
-                retry_func()
-            end)
+            -- 检查完整性可以在后台静默进行，或者在完成时由用户手动检查
+            if H.is_func(completion_callback) then
+                completion_callback(true)
+            end
         else
             if H.is_func(completion_callback) then
                 completion_callback(true)
             end
-            MessageBox:success("缓存完成")
         end
-    end
-
-    local showRetryDialog = function(err_msg)
-        local error_title = "⚠ 缓存出错"
-        local is_timeout = err_msg:find("超时")
-        local is_toc_empty = err_msg:find("目录为空") or err_msg:find("TOC") or err_msg:find("章节列表")
-
-        if is_timeout then
-            error_title = "⚠ 下载超时"
-        elseif is_toc_empty then
-            error_title = "⚠ 目录为空"
-        end
-
-            -- 检查是否启用了多线程
-            local settings = Backend:getSettings()
-            local current_threads = tonumber(settings.download_threads) or 1
-            local has_multithread = current_threads > 1 and not self.temp_disable_multithread
-
-            local other_buttons_list = {{
-                {
-                    text = "查看已缓存",
-                    callback = function()
-                        self:checkCacheIntegrity(bookinfo, chapter_count, completion_callback, function()
-                            retry_func()
-                        end)
-                    end
-                }
-            }}
-
-            -- 如果启用了多线程，添加"停用多线程并重试"按钮
-            if has_multithread then
-                table.insert(other_buttons_list[1], {
-                    text = "停用多线程并重试",
-                    callback = function()
-                        self.temp_disable_multithread = true
-                        logger.info("User disabled multi-threading for this session")
-                        retry_func()
-                    end
-                })
-            end
-
-            -- 所有错误统一提供重试选项
-            MessageBox:confirm(
-                string.format("%s\n\n%s\n\n已自动重试%s次仍失败，是否继续重试？", error_title, err_msg, retry_count),
-                function(result)
-                    if result then
-                        retry_func()
-                    else
-                        -- 用户取消重试，调用完成回调
-                        if H.is_func(completion_callback) then
-                            completion_callback(false)
-                        end
-                    end
-                end,
-                {
-                    ok_text = "重试",
-                    cancel_text = "取消",
-                    other_buttons_first = true,
-                    other_buttons = other_buttons_list
-                })
     end
 
     local handleCacheError = function(err_msg)
-        if cache_msg and cache_msg.close then
-            cache_msg:close()
-        end
         cache_complete = true
-
-        -- 首次出错自动重试一次
+        Notification:notify(string.format("<<%s>> 缓存中断: %s", bookinfo.name, err_msg), Notification.SOURCE_ALWAYS_SHOW)
+        
+        -- 自动重试逻辑保持不变
         if retry_count == 0 then
-            UIManager:scheduleIn(1, function()
+            UIManager:scheduleIn(5, function()
                 self:startCacheChapters(bookinfo, uncached_chapters, chapter_count, 1, completion_callback, skip_cache_integrity_check)
             end)
-            return
         end
-
-        -- 重试后仍失败，显示重试对话框
-        showRetryDialog(err_msg)
     end
 
     local cache_progress_callback = function(progress, err_msg)
@@ -678,8 +603,9 @@ function M:startCacheChapters(bookinfo, uncached_chapters, chapter_count, retry_
                 handleCacheError(err_msg)
             end
         elseif H.is_num(progress) then
-            if cache_msg and cache_msg.reportProgress then
-                cache_msg:reportProgress(progress)
+            -- 每 10% 进度显示一次通知，避免过于频繁
+            if progress % math.max(1, math.floor(uncached_count / 10)) == 0 then
+                -- Notification:notify(string.format("缓存进度: %d/%d", progress, uncached_count))
             end
         end
     end

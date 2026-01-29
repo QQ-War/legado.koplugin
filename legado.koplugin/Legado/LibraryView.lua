@@ -1733,19 +1733,23 @@ local function init_book_menu(parent)
     end
 
     function book_menu:onRefreshLibrary()
-            Backend:closeDbManager()
-            MessageBox:loading("Refreshing Library", function()
+            local Notification = require("ui/widget/notification")
+            Notification:notify("正在同步书架...", Notification.SOURCE_ALWAYS_SHOW)
+
+            Backend:launchProcess(function()
                 return Backend:refreshLibraryCache(parent._ui_refresh_time)
-            end, function(state, response)
-                if state == true then
+            end, function(status, response, r2)
+                if status == true then
                     Backend:HandleResponse(response, function(data)
-                        MessageBox:notice('同步成功')
+                        Notification:notify("书架同步完成", Notification.SOURCE_ALWAYS_SHOW)
                         self.show_search_item = true
                         self:refreshItems()
                         self.parent_ref._ui_refresh_time = os.time()
                     end, function(err_msg)
                         MessageBox:notice(tostring(err_msg) or '同步失败')
                     end)
+                else
+                    MessageBox:error(tostring(response or r2 or "同步任务失败"))
                 end
             end)
     end

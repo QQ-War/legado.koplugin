@@ -367,24 +367,21 @@ function M:onRefreshChapters()
         MessageBox:notice("目录信息不完整，无法刷新")
         return
     end
-    Backend:closeDbManager()
-    MessageBox:loading("正在刷新章节数据", function()
-        local ok, response = pcall(function()
-            return Backend:refreshChaptersCache({
-                cache_id = self.bookinfo.cache_id,
-                bookUrl = self.bookinfo.bookUrl,
-                origin = self.bookinfo.origin,
-                name = self.bookinfo.name,
-            }, self._ui_refresh_time)
-        end)
-        if not ok then
-            return { type = "ERROR", message = tostring(response) }
-        end
-        return response
-    end, function(state, response)
-        if state == true then
+
+    local Notification = require("ui/widget/notification")
+    Notification:notify("正在刷新目录...", Notification.SOURCE_ALWAYS_SHOW)
+
+    Backend:launchProcess(function()
+        return Backend:refreshChaptersCache({
+            cache_id = self.bookinfo.cache_id,
+            bookUrl = self.bookinfo.bookUrl,
+            origin = self.bookinfo.origin,
+            name = self.bookinfo.name,
+        }, self._ui_refresh_time)
+    end, function(status, response, r2)
+        if status == true then
             Backend:HandleResponse(response, function(data)
-                MessageBox:notice('同步成功')
+                Notification:notify("目录刷新完成", Notification.SOURCE_ALWAYS_SHOW)
                 self:refreshItems(nil, true)
                 self.all_chapters_count = nil
                 self._ui_refresh_time = os.time()
@@ -394,6 +391,8 @@ function M:onRefreshChapters()
                     MessageBox:notice("请检查并刷新书架")
                 end
             end)
+        else
+            MessageBox:error(tostring(response or r2 or "刷新任务失败"))
         end
     end)
 end
@@ -405,33 +404,26 @@ function M:showReaderUI(chapter)
 end
 
 function M:syncProgressShow(chapter)
-    Backend:closeDbManager()
-    MessageBox:loading("同步中 ", function()
+    local Notification = require("ui/widget/notification")
+    Notification:notify("正在同步阅读进度...", Notification.SOURCE_ALWAYS_SHOW)
+
+    Backend:launchProcess(function()
         if H.is_tbl(chapter) and H.is_num(chapter.chapters_index) then
-            local response = Backend:saveBookProgress(chapter)
-            if not (type(response) == 'table' and response.type == 'SUCCESS') then
-                local message = type(response) == 'table' and response.message or
-                                    "进度上传失败，请稍后重试"
-                return {
-                    type = 'ERROR',
-                    message = message or ""
-                }
-            end
+            return Backend:saveBookProgress(chapter)
         end
-    end, function(state, response)
-        if state == true then
+    end, function(status, response, r2)
+        if status == true then
             Backend:HandleResponse(response, function(data)
-                MessageBox:notice('同步成功')
+                Notification:notify("进度同步成功", Notification.SOURCE_ALWAYS_SHOW)
                 if H.is_tbl(chapter) and H.is_num(chapter.chapters_index) then
                     self:refreshItems(true)
                     self:switchItemTable(nil, self.item_table, chapter.chapters_index)
                 end
             end, function(err_msg)
                 MessageBox:notice(err_msg or '同步失败')
-                if err_msg ~= '处理中' then
-                    MessageBox:notice("请检查并刷新书架")
-                end
             end)
+        else
+            MessageBox:error(tostring(response or r2 or "同步任务失败"))
         end
     end)
 end
