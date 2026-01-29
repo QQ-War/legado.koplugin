@@ -124,12 +124,25 @@ function M:showReaderUI(chapter)
     if self.book_menu and UIManager:isWidgetShown(self.book_menu) then
         self.book_menu:onClose()
     end
-    if ReaderUI.instance then
-        self._legado_switching = true
-        ReaderUI.instance:switchDocument(book_path, true)
-    else
-        UIManager:broadcastEvent(Event:new("SetupShowReader"))
-        ReaderUI:showReader(book_path, nil, true)
+    local ok, err = pcall(function()
+        if ReaderUI.instance then
+            self._legado_switching = true
+            ReaderUI.instance:switchDocument(book_path, true)
+        else
+            UIManager:broadcastEvent(Event:new("SetupShowReader"))
+            ReaderUI:showReader(book_path, nil, true)
+        end
+    end)
+    if not ok then
+        logger.err("showReaderUI failed:", err)
+        local bookinfo = Backend:getBookInfoCache(chapter.book_cache_id)
+        if H.is_tbl(bookinfo) then
+            MessageBox:error("打开失败，已返回目录")
+            self:showBookTocDialog(bookinfo)
+        else
+            MessageBox:error("打开失败")
+        end
+        return
     end
     UIManager:nextTick(function()
         Backend:after_reader_chapter_show(chapter)
