@@ -1737,19 +1737,27 @@ local function init_book_menu(parent)
             Notification:notify("正在同步书架...", Notification.SOURCE_ALWAYS_SHOW)
 
             Backend:launchProcess(function()
-                return Backend:refreshLibraryCache(parent._ui_refresh_time)
+                -- 子进程：只负责网络请求，不传回调则不触发 API 内部的写库逻辑
+                return Backend.apiClient:getBookshelf()
             end, function(status, response, r2)
-                if status == true then
-                    Backend:HandleResponse(response, function(data)
+                if status == true and H.is_tbl(response) and H.is_tbl(response.data) then
+                    -- 主进程：安全地写入数据库
+                    local bookShelfId = Backend:getCurrentBookShelfId()
+                    local ok, err = pcall(function()
+                        return Backend.dbManager:upsertBooks(bookShelfId, response.data, true)
+                    end)
+                    
+                    if ok then
                         Notification:notify("书架同步完成", Notification.SOURCE_ALWAYS_SHOW)
                         self.show_search_item = true
                         self:refreshItems()
                         self.parent_ref._ui_refresh_time = os.time()
-                    end, function(err_msg)
-                        MessageBox:notice(tostring(err_msg) or '同步失败')
-                    end)
+                    else
+                        MessageBox:error("写入书架失败: " .. tostring(err))
+                    end
                 else
-                    MessageBox:error(tostring(response or r2 or "同步任务失败"))
+                    local err_msg = (H.is_tbl(response) and response.message) or r2 or "同步失败"
+                    MessageBox:error(tostring(err_msg))
                 end
             end)
     end

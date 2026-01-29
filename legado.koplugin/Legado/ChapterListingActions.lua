@@ -372,27 +372,32 @@ function M:onRefreshChapters()
     Notification:notify("正在刷新目录...", Notification.SOURCE_ALWAYS_SHOW)
 
     Backend:launchProcess(function()
-        return Backend:refreshChaptersCache({
-            cache_id = self.bookinfo.cache_id,
-            bookUrl = self.bookinfo.bookUrl,
-            origin = self.bookinfo.origin,
-            name = self.bookinfo.name,
-        }, self._ui_refresh_time)
+        -- 子进程只拿数据
+        return Backend.apiClient:getChapterList({
+                cache_id = self.bookinfo.cache_id,
+                bookUrl = self.bookinfo.bookUrl,
+                origin = self.bookinfo.origin,
+                name = self.bookinfo.name,
+            })
     end, function(status, response, r2)
-        if status == true then
-            Backend:HandleResponse(response, function(data)
+        if status == true and H.is_tbl(response) and H.is_tbl(response.data) then
+            -- 主进程写库
+            local book_cache_id = self.bookinfo.cache_id
+            local ok, err = pcall(function()
+                return Backend.dbManager:upsertChapters(book_cache_id, response.data)
+            end)
+
+            if ok then
                 Notification:notify("目录刷新完成", Notification.SOURCE_ALWAYS_SHOW)
                 self:refreshItems(nil, true)
                 self.all_chapters_count = nil
                 self._ui_refresh_time = os.time()
-            end, function(err_msg)
-                MessageBox:notice(err_msg or '同步失败')
-                if err_msg ~= '处理中' then
-                    MessageBox:notice("请检查并刷新书架")
-                end
-            end)
+            else
+                MessageBox:error("写入目录失败: " .. tostring(err))
+            end
         else
-            MessageBox:error(tostring(response or r2 or "刷新任务失败"))
+            local err_msg = (H.is_tbl(response) and response.message) or r2 or "刷新失败"
+            MessageBox:error(tostring(err_msg))
         end
     end)
 end
