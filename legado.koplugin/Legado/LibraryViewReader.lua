@@ -49,9 +49,9 @@ function M:loadAndRenderChapter(chapter)
     if (H.is_tbl(cache_chapter) and H.is_str(cache_chapter.cacheFilePath)) then
         self:showReaderUI(cache_chapter)
     else
-        if H.is_tbl(self._pending_chapter_request)
-            and self._pending_chapter_request.book_cache_id == chapter.book_cache_id
-            and self._pending_chapter_request.chapters_index == chapter.chapters_index then
+        self._pending_chapter_requests = self._pending_chapter_requests or {}
+        local pending_key = tostring(chapter.book_cache_id) .. ":" .. tostring(chapter.chapters_index)
+        if self._pending_chapter_requests[pending_key] then
             local Notification = require("ui/widget/notification")
             Notification:notify("该章节正在后台下载", Notification.SOURCE_ALWAYS_SHOW)
             return
@@ -63,6 +63,7 @@ function M:loadAndRenderChapter(chapter)
             book_cache_id = chapter.book_cache_id,
             chapters_index = chapter.chapters_index
         }
+        self._pending_chapter_requests[pending_key] = true
         
         -- 发起非阻塞通知
         local Notification = require("ui/widget/notification")
@@ -76,11 +77,14 @@ function M:loadAndRenderChapter(chapter)
                     Backend.dbManager:updateCacheFilePath(response, response.cacheFilePath)
                 else
                     MessageBox:error("缓存写入失败：DB未就绪")
+                    self._pending_chapter_requests[pending_key] = nil
+                    return
                 end
 
                 local pending = self._pending_chapter_request
                 if not (pending and pending.id == request_id) then
                     Notification:notify("下载完成: " .. (chapter.title or ""), Notification.SOURCE_ALWAYS_SHOW)
+                    self._pending_chapter_requests[pending_key] = nil
                     return
                 end
                 
@@ -88,13 +92,16 @@ function M:loadAndRenderChapter(chapter)
                 if not ReaderUI.instance then
                     self._pending_chapter_request = nil
                     self:showReaderUI(response)
+                    self._pending_chapter_requests[pending_key] = nil
                 else
                     self._pending_chapter_request = nil
                     Notification:notify("下载完成，已可阅读", Notification.SOURCE_ALWAYS_SHOW)
+                    self._pending_chapter_requests[pending_key] = nil
                 end
             else
                 local err_msg = (H.is_tbl(response) and response.message) or response or r2 or "下载失败"
                 MessageBox:error(err_msg)
+                self._pending_chapter_requests[pending_key] = nil
             end
         end)
     end
