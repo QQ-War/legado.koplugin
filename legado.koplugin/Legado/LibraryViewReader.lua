@@ -102,6 +102,9 @@ function M:showReaderUI(chapter)
     if toc_obj and UIManager:isWidgetShown(toc_obj) then
         UIManager:close(toc_obj)
     end
+    if self.book_menu and UIManager:isWidgetShown(self.book_menu) then
+        self.book_menu:onClose()
+    end
     if ReaderUI.instance then
         self._legado_switching = true
         ReaderUI.instance:switchDocument(book_path, true)

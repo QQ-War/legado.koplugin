@@ -1722,7 +1722,6 @@ local function init_book_menu(parent)
         end
 
         self.parent_ref:refreshBookTocWidget(bookinfo, onReturnCallBack, false)
-        self:onClose()
         if self.parent_ref:openLastReadChapter(bookinfo) ~= true then
             self.parent_ref:refreshBookTocWidget(bookinfo, onReturnCallBack, true)
         end
