@@ -368,36 +368,44 @@ function M:onRefreshChapters()
         return
     end
 
-    local Notification = require("ui/widget/notification")
-    Notification:notify("正在刷新目录...", Notification.SOURCE_ALWAYS_SHOW)
-
-    Backend:launchProcess(function()
-        -- 子进程只拿数据
-        return Backend.apiClient:getChapterList({
+    local message_dialog = MessageBox:showloadingMessage("正在刷新目录")
+    
+    UIManager:nextTick(function()
+        local status, response = pcall(function()
+            return Backend.apiClient:getChapterList({
                 cache_id = self.bookinfo.cache_id,
                 bookUrl = self.bookinfo.bookUrl,
                 origin = self.bookinfo.origin,
                 name = self.bookinfo.name,
             })
-    end, function(status, response, r2)
-        if status == true and H.is_tbl(response) and H.is_tbl(response.data) then
-            -- 主进程写库
-            local book_cache_id = self.bookinfo.cache_id
-            local ok, err = pcall(function()
-                return Backend.dbManager:upsertChapters(book_cache_id, response.data)
-            end)
+        end)
+        
+        if message_dialog.close then message_dialog:close() end
 
-            if ok then
-                Notification:notify("目录刷新完成", Notification.SOURCE_ALWAYS_SHOW)
-                self:refreshItems(nil, true)
-                self.all_chapters_count = nil
-                self._ui_refresh_time = os.time()
+        if status == true and H.is_tbl(response) then
+            -- 兼容 response.data 或 response 本身就是列表的情况
+            local data = response.data or response
+            if H.is_tbl(data) then
+                -- 主进程写库
+                local book_cache_id = self.bookinfo.cache_id
+                local ok, err = pcall(function()
+                    return Backend.dbManager:upsertChapters(book_cache_id, data)
+                end)
+
+                if ok then
+                    MessageBox:notice("目录刷新完成")
+                    self:refreshItems(nil, true)
+                    self.all_chapters_count = nil
+                    self._ui_refresh_time = os.time()
+                else
+                    MessageBox:error("写入目录失败: " .. tostring(err))
+                end
             else
-                MessageBox:error("写入目录失败: " .. tostring(err))
+                MessageBox:error("刷新失败：数据格式错误")
             end
         else
-            local err_msg = (H.is_tbl(response) and response.message) or r2 or "刷新失败"
-            MessageBox:error(tostring(err_msg))
+            local err_msg = (H.is_tbl(response) and response.message) or tostring(response or "刷新失败")
+            MessageBox:error(err_msg)
         end
     end)
 end
@@ -409,17 +417,14 @@ function M:showReaderUI(chapter)
 end
 
 function M:syncProgressShow(chapter)
-    local Notification = require("ui/widget/notification")
-    Notification:notify("正在同步阅读进度...", Notification.SOURCE_ALWAYS_SHOW)
-
-    Backend:launchProcess(function()
+    MessageBox:loading("正在同步阅读进度", function()
         if H.is_tbl(chapter) and H.is_num(chapter.chapters_index) then
             return Backend:saveBookProgress(chapter)
         end
-    end, function(status, response, r2)
+    end, function(status, response)
         if status == true then
             Backend:HandleResponse(response, function(data)
-                Notification:notify("进度同步成功", Notification.SOURCE_ALWAYS_SHOW)
+                MessageBox:notice("进度同步成功")
                 if H.is_tbl(chapter) and H.is_num(chapter.chapters_index) then
                     self:refreshItems(true)
                     self:switchItemTable(nil, self.item_table, chapter.chapters_index)
@@ -428,7 +433,8 @@ function M:syncProgressShow(chapter)
                 MessageBox:notice(err_msg or '同步失败')
             end)
         else
-            MessageBox:error(tostring(response or r2 or "同步任务失败"))
+            local err_msg = (H.is_tbl(response) and response.message) or tostring(response or "同步任务失败")
+            MessageBox:error(err_msg)
         end
     end)
 end

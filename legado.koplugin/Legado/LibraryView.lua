@@ -1733,31 +1733,34 @@ local function init_book_menu(parent)
     end
 
     function book_menu:onRefreshLibrary()
-            local Notification = require("ui/widget/notification")
-            Notification:notify("正在同步书架...", Notification.SOURCE_ALWAYS_SHOW)
-
-            Backend:launchProcess(function()
-                -- 子进程：只负责网络请求，不传回调则不触发 API 内部的写库逻辑
+            MessageBox:loading("正在同步书架", function()
+                -- 子进程：只负责网络请求
                 return Backend.apiClient:getBookshelf()
-            end, function(status, response, r2)
-                if status == true and H.is_tbl(response) and H.is_tbl(response.data) then
-                    -- 主进程：安全地写入数据库
-                    local bookShelfId = Backend:getCurrentBookShelfId()
-                    local ok, err = pcall(function()
-                        return Backend.dbManager:upsertBooks(bookShelfId, response.data, true)
-                    end)
-                    
-                    if ok then
-                        Notification:notify("书架同步完成", Notification.SOURCE_ALWAYS_SHOW)
-                        self.show_search_item = true
-                        self:refreshItems()
-                        self.parent_ref._ui_refresh_time = os.time()
+            end, function(status, response)
+                if status == true and H.is_tbl(response) then
+                    -- 兼容 response.data 或 response 本身就是列表的情况
+                    local data = response.data or response
+                    if H.is_tbl(data) then
+                        -- 主进程：安全地写入数据库
+                        local bookShelfId = Backend:getCurrentBookShelfId()
+                        local ok, err = pcall(function()
+                            return Backend.dbManager:upsertBooks(bookShelfId, data, true)
+                        end)
+                        
+                        if ok then
+                            MessageBox:notice("书架同步完成")
+                            self.show_search_item = true
+                            self:refreshItems()
+                            self.parent_ref._ui_refresh_time = os.time()
+                        else
+                            MessageBox:error("写入书架失败: " .. tostring(err))
+                        end
                     else
-                        MessageBox:error("写入书架失败: " .. tostring(err))
+                        MessageBox:error("同步失败：返回数据格式错误")
                     end
                 else
-                    local err_msg = (H.is_tbl(response) and response.message) or r2 or "同步失败"
-                    MessageBox:error(tostring(err_msg))
+                    local err_msg = (H.is_tbl(response) and response.message) or tostring(response or "同步失败")
+                    MessageBox:error(err_msg)
                 end
             end)
     end
