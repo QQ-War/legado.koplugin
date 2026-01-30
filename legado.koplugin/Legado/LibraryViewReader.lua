@@ -211,8 +211,12 @@ function M:ReaderUIEventCallback(chapter_direction)
         local book_cache_id = self:getReadingBookId()
         if book_cache_id then
             local bookinfo = Backend:getBookInfoCache(book_cache_id)
-            self:afterCloseReaderUi(function()
-                self:showBookTocDialog(bookinfo)
+            MessageBox:confirm("没有更多章节了，是否打开目录刷新？", function(result)
+                if result then
+                    self:afterCloseReaderUi(function()
+                        self:showBookTocDialog(bookinfo)
+                    end)
+                end
             end)
         end
     end

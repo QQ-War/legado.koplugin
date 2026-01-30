@@ -241,6 +241,14 @@ function LibraryView:openBrowserMenu(file)
                     UIManager:show(require("Legado/BookDetailsDialog"):new{
                         bookinfo = bookinfo,
                         has_reload_btn = true,
+                        callbacks = {
+                            ["查看目录"] = function()
+                                local onReturnCallBack = function()
+                                    self:getBrowserWidget():show_view()
+                                end
+                                self:refreshBookTocWidget(bookinfo, onReturnCallBack, true)
+                            end
+                        }
                     })
                 end)
             end
@@ -1779,6 +1787,13 @@ local function init_book_menu(parent)
             bookinfo = bookinfo,
             has_reload_btn = true,
             callbacks = {
+                ["查看目录"] = function()
+                    local onReturnCallBack = function()
+                        self:show_view()
+                        self:refreshItems(true)
+                    end
+                    self.parent_ref:refreshBookTocWidget(bookinfo, onReturnCallBack, true)
+                end,
                 [pin_top_text] = function()
                     Backend:manuallyPinToTop(item.cache_id, bookinfo.sortOrder)
                     self:refreshItems(true)
