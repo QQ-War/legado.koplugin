@@ -77,6 +77,13 @@ local legado_app = {
             optional_params = {"v"},
             expected_status = {200}
         },
+        getChapterPackage = {
+            path = "/chapterPackage",
+            method = "GET",
+            required_params = {"url", "index"},
+            optional_params = {"v", "bookSourceUrl", "type"},
+            expected_status = {200}
+        },
     }
 }
 
@@ -234,6 +241,13 @@ local reader3 = {
             required_params = {"bookSourceUrl"},
             payload = {"bookSourceUrl"},
             optional_params = {"v"},
+            expected_status = {200}
+        },
+        getChapterPackage = {
+            path = "/chapterPackage",
+            method = "GET",
+            required_params = {"url", "index"},
+            optional_params = {"v", "bookSourceUrl", "type"},
             expected_status = {200}
         },
     }
@@ -409,6 +423,13 @@ local qread = {
             required_params = {"bookSourceUrl"},
             payload = {"bookSourceUrl","need"},
             optional_params = {"v", "need"},
+            expected_status = {200}
+        },
+        getChapterPackage = {
+            path = "/chapterPackage",
+            method = "GET",
+            required_params = {"url", "index"},
+            optional_params = {"v", "bookSourceUrl", "type"},
             expected_status = {200}
         },
     }

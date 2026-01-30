@@ -400,4 +400,28 @@ M.getHomeDir = function()
                require("apps/filemanager/filemanagerutil").getDefaultDir()
 end
 
+M.encodeQuery = function(t)
+    if type(t) ~= "table" then return "" end
+    local socket_url = require("socket.url")
+    local query = {}
+    for k, v in pairs(t) do
+        table.insert(query, string.format("%s=%s", socket_url.escape(tostring(k)), socket_url.escape(tostring(v))))
+    end
+    return table.concat(query, "&")
+end
+
+M.joinUrl = function(base, path)
+    if not H.is_str(base) then return path or "" end
+    if not H.is_str(path) then return base end
+    local b = base
+    if b:sub(-1) ~= "/" then
+        b = b .. "/"
+    end
+    local p = path
+    if p:sub(1, 1) == "/" then
+        p = p:sub(2)
+    end
+    return b .. p
+end
+
 return M

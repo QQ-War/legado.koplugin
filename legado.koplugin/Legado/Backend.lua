@@ -1038,6 +1038,83 @@ local txt2html = function(book_cache_id, content, title)
 end
 
 local htmlparser
+local function pDownload_ChapterPackage(self, chapter, filePath)
+    dbg.v('pDownload_ChapterPackage start:', filePath)
+    
+    local bookUrl = chapter.bookUrl
+    local index = chapter.chapters_index
+    local bookSourceUrl = chapter.origin
+    
+    -- 动态获取 API 路径
+    local base_url = self.apiClient.client.base_url or (self.apiClient.settings and self.apiClient.settings.server_address) or ""
+    local api_url = H.joinUrl(base_url, "chapterPackage")
+    local query = {
+        url = bookUrl,
+        index = index,
+        bookSourceUrl = bookSourceUrl,
+        type = 2, -- 漫画模式
+        v = os.time()
+    }
+    
+    -- 如果有 token，带上它
+    local token = self.apiClient:reader3Token(true)
+    if token then
+        query.accessToken = token
+    end
+    
+    local full_url = api_url .. "?" .. H.encodeQuery(query)
+    dbg.v('ChapterPackage URL:', full_url)
+    
+    local cbz_path_tmp = filePath .. '.downloading'
+    local file_fp = io.open(cbz_path_tmp, "wb")
+    if not file_fp then
+        error("Cannot open temp file for writing: " .. cbz_path_tmp)
+    end
+    
+    local status, err = pGetUrlContent({
+        url = full_url,
+        file = file_fp,
+        timeout = 60,
+        maxtime = 300, -- 大文件下载，给足时间
+    })
+    file_fp:close()
+    
+    if not status then
+        if util.fileExists(cbz_path_tmp) then
+            util.removeFile(cbz_path_tmp)
+        end
+        return false, "Download failed: " .. tostring(err)
+    end
+    
+    -- 校验 zip 头，避免服务端返回 JSON 错误导致坏包
+    do
+        local head_fp = io.open(cbz_path_tmp, "rb")
+        if head_fp then
+            local head = head_fp:read(2) or ""
+            head_fp:close()
+            if head ~= "PK" then
+                if util.fileExists(cbz_path_tmp) then
+                    util.removeFile(cbz_path_tmp)
+                end
+                return false, "Invalid package format"
+            end
+        end
+    end
+
+    -- 重命名为 .cbz
+    if util.fileExists(filePath) then
+        util.removeFile(filePath)
+    end
+    
+    local ok, rename_err = os.rename(cbz_path_tmp, filePath)
+    if not ok then
+        return false, "Rename failed: " .. tostring(rename_err)
+    end
+    
+    dbg.v('pDownload_ChapterPackage success')
+    return true
+end
+
 function M:_AnalyzingChapters(chapter, content, filePath)
 
     local bookUrl = chapter.bookUrl
@@ -1062,6 +1139,22 @@ function M:_AnalyzingChapters(chapter, content, filePath)
     -- logger.dbg("get_chapter_ontent_type:",page_type)
 
     if page_type == PAGE_TYPES['IMAGE'] then
+        -- 仅 qread 支持服务端章节打包
+        local settings = self:getSettings()
+        if settings.manga_proxy_download == true and self:_isQingread() then
+            local cbz_path = filePath .. '.cbz'
+            local ok, err = H.pcall(pDownload_ChapterPackage, self, chapter, cbz_path)
+            if ok then
+                chapter.cacheFilePath = cbz_path
+                if chapter.is_pre_loading == true then
+                    dbg.v('Package Cache task completed:', chapter_title)
+                end
+                return chapter
+            else
+                dbg.v('pDownload_ChapterPackage failed, falling back to local creation:', err)
+            end
+        end
+
         local img_sources = self:getPorxyPicUrls(bookUrl, content)
         if H.is_tbl(img_sources) and #img_sources > 0 then
 
