@@ -1912,11 +1912,11 @@ function M:analyzeCacheStatusForRange(book_cache_id, start_index, end_index, sta
     local result = { total_count = 0, cached_count = 0, uncached_count = 0, cached_chapters = {}, uncached_chapters = {} }
     if not (H.is_str(book_cache_id) and H.is_num(start_index) and H.is_num(end_index)) then
         logger.err("analyzeCacheStatusForRange err - book_cache_id, start_index, end_index: ",book_cache_id, start_index, end_index)
-        return result
+        return util.tableToString(result)
     end
     if start_index < 0 or end_index < start_index then
         logger.err("analyzeCacheStatusForRange err - start_index, end_index: ",start_index, end_index)
-        return result
+        return util.tableToString(result)
     end
     for i = start_index, end_index do
         -- local all_chapters = self:getBookChapterPlusCache(book_cache_id)
@@ -1947,7 +1947,8 @@ function M:analyzeCacheStatusForRange(book_cache_id, start_index, end_index, sta
             result.total_count = result.total_count + 1
         end
     end
-    return result
+
+    return util.tableToString(result)
 end
 
 function M:getChapterInfoCache(bookCacheId, chapterIndex)

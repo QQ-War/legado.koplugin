@@ -77,17 +77,12 @@ function M:onMenuHold(item)
             function(result)
                 if not result then return end
                 Backend:closeDbManager()
-                MessageBox:loading("清理中 ", function()
-                    return Backend:cleanChapterCacheRange(book_cache_id, start, finish)
-                end, function(state, response)
-                    if state == true then
-                        Backend:HandleResponse(response, function(data)
-                            MessageBox:notice("清理完成")
-                            self:refreshItems(true)
-                        end, function(err_msg)
-                            MessageBox:error('失败：', err_msg)
-                        end)
-                    end
+                local response = Backend:cleanChapterCacheRange(book_cache_id, start, finish)
+                Backend:HandleResponse(response, function(data)
+                    MessageBox:notice("清理完成")
+                    self:refreshItems(true)
+                end, function(err_msg)
+                    MessageBox:error('失败：', err_msg)
                 end)
             end
         )

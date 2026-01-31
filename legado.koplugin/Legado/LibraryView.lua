@@ -641,19 +641,14 @@ function LibraryView:openMenu(dimen)
                 function(result)
                     if result then
                         Backend:closeDbManager()
-                        MessageBox:loading("清除中", function()
-                            return Backend:cleanAllBookCaches()
-                        end, function(state, response)
-                            if state == true then
-                                Backend:HandleResponse(response, function(data)
-                                    settings.servers_history = {}
-                                    Backend:saveSettings(settings)
-                                    MessageBox:notice("已清除")
-                                    self:closeMenu()
-                                end, function(err_msg)
-                                    MessageBox:error('操作失败：', tostring(err_msg))
-                                end)
-                            end
+                        local response = Backend:cleanAllBookCaches()
+                        Backend:HandleResponse(response, function(data)
+                            settings.servers_history = {}
+                            Backend:saveSettings(settings)
+                            MessageBox:notice("已清除")
+                            self:closeMenu()
+                        end, function(err_msg)
+                            MessageBox:error('操作失败：', tostring(err_msg))
                         end)
                     end
                 end, {

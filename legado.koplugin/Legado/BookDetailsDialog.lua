@@ -175,16 +175,11 @@ function BookDetails:getButtonGroup(other_elements_height)
                                         function(result)
                                             if not result then return end
                                             Backend:closeDbManager()
-                                            MessageBox:loading("清理中 ", function()
-                                                return Backend:cleanReadChapterCache(self.bookinfo.cache_id)
-                                            end, function(state, response)
-                                                if state == true then
-                                                    Backend:HandleResponse(response, function(data)
-                                                        MessageBox:success(tostring(data or "清理完成"))
-                                                    end, function(err_msg)
-                                                        MessageBox:error('失败：', err_msg)
-                                                    end)
-                                                end
+                                            local response = Backend:cleanReadChapterCache(self.bookinfo.cache_id)
+                                            Backend:HandleResponse(response, function(data)
+                                                MessageBox:success(tostring(data or "清理完成"))
+                                            end, function(err_msg)
+                                                MessageBox:error('失败：', err_msg)
                                             end)
                                         end)
                                 end,
@@ -195,7 +190,9 @@ function BookDetails:getButtonGroup(other_elements_height)
                                     MessageBox:loading("统计中", function()
                                         return Backend:analyzeCacheStatus(self.bookinfo.cache_id)
                                     end, function(state, data)
-                                        if state == true then
+                                        if state == true and H.is_str(data) then
+                                            local status_func = loadstring("return " .. data)
+                                            if status_func then data = status_func() end
                                             if not (H.is_tbl(data) and H.is_tbl(data.cached_chapters)) then
                                                 MessageBox:notice("未发现缓存")
                                                 return
@@ -248,17 +245,12 @@ function BookDetails:getButtonGroup(other_elements_height)
                                         function(result)
                                             if not result then return end
                                             Backend:closeDbManager()
-                                            MessageBox:loading("清理中 ", function()
-                                                return Backend:cleanBookCache(self.bookinfo.cache_id)
-                                            end, function(state, response)
-                                                if state == true then
-                                                    Backend:HandleResponse(response, function(data)
-                                                        MessageBox:success("已清理")
-                                                        self:_reload()
-                                                    end, function(err_msg)
-                                                        MessageBox:error('请稍后重试：', err_msg)
-                                                    end)
-                                                end
+                                            local response = Backend:cleanBookCache(self.bookinfo.cache_id)
+                                            Backend:HandleResponse(response, function(data)
+                                                MessageBox:success("已清理")
+                                                self:_reload()
+                                            end, function(err_msg)
+                                                MessageBox:error('请稍后重试：', err_msg)
                                             end)
                                         end)
                                 end,
