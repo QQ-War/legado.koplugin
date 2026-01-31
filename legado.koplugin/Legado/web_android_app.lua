@@ -101,7 +101,13 @@ function M:isNeedLogin(response)
 end
 
 function M:reader3Token(token)
-    local cfg, key = self:getLuaConfig(H.getTempDirectory() .. '/cache.lua'), self.name or "r3k"
+    local settings = self.settings or {}
+    local key = self.name or "r3k"
+    if settings.server_address then
+        local unique_id = H.md5(string.format("%s|%s", settings.server_address, settings.reader3_un or ""))
+        key = string.format("%s_%s", key, string.sub(unique_id, 1, 12))
+    end
+    local cfg = self:getLuaConfig(H.getTempDirectory() .. '/cache.lua')
     if H.is_str(token) then
         return cfg:saveSetting(key, token):flush()
     elseif token == true then
