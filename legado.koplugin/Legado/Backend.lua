@@ -2597,10 +2597,13 @@ function M:deleteWebConfig(conf_name)
 
     -- 清理该配置下所有书籍的本地缓存
     local book_cache_ids = self.dbManager:getShelfBookCacheIds(book_shelf_id)
+    local plugin_cache_dir = H.getTempDirectory()
     for _, cache_id in ipairs(book_cache_ids) do
-        local book_cache_path = H.getBookCachePath(cache_id)
-        if book_cache_path and util.pathExists(book_cache_path) then
+        local book_cache_path = H.joinPath(plugin_cache_dir, cache_id .. '.sdr')
+        if util.pathExists(book_cache_path) then
             pcall(ffiUtil.purgeDir, book_cache_path)
+            -- purgeDir 通常清理内容，确保目录本身也被移除
+            pcall(util.removeFile, book_cache_path)
         end
     end
 

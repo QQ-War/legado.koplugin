@@ -1457,10 +1457,14 @@ function M:removeBookShelf(bookShelfId)
     if not H.is_str(bookShelfId) then
         return
     end
-    -- 同时删除关联的章节记录，防止孤立数据
-    self:execute("DELETE FROM chapters WHERE bookCacheId IN (SELECT bookCacheId FROM books WHERE bookShelfId = ?)", {bookShelfId})
-    local delete_books_sql = "DELETE FROM books WHERE bookShelfId = ?"
-    return self:execute(delete_books_sql, {bookShelfId})
+    return self:transaction(function()
+        -- 1. 先删除该书架下所有书籍关联的章节
+        self:execute("DELETE FROM chapters WHERE bookCacheId IN (SELECT bookCacheId FROM books WHERE bookShelfId = ?)", {bookShelfId})
+        -- 2. 再删除书籍记录
+        local delete_books_sql = "DELETE FROM books WHERE bookShelfId = ?"
+        self:execute(delete_books_sql, {bookShelfId})
+        return true
+    end)()
 end
 
 return M
