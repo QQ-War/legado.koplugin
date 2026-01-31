@@ -2132,10 +2132,17 @@ function M:cleanAllBookCaches()
 
     local bookShelfId = self:getCurrentBookShelfId()
     self.dbManager:clearBooks(bookShelfId)
-    self:closeDbManager()
+    
     local books_cache_dir = H.getTempDirectory()
-    ffiUtil.purgeDir(books_cache_dir)
-    H.getTempDirectory()
+    local lfs = require("libs/libkoreader-lfs")
+    for file in lfs.dir(books_cache_dir) do
+        if file:match("%.sdr$") then
+            local full_path = H.joinPath(books_cache_dir, file)
+            pcall(ffiUtil.purgeDir, full_path)
+            pcall(util.removeFile, full_path)
+        end
+    end
+
     self:saveSettings()
     return wrap_response(true)
 end
@@ -2591,6 +2598,21 @@ function M:deleteWebConfig(conf_name)
     end
     if settings.current_conf_name == conf_name then
         return wrap_response(nil, "当前激活配置, 不可删除")
+    end
+
+    local config = web_configs[conf_name]
+    -- 清理关联的 TOKEN
+    if config and config.type and (config.type == 2 or config.type == 3) then
+        local type_keys = { [2] = "reader3", [3] = "qread" }
+        local key = type_keys[config.type] or "r3k"
+        if config.url then
+            local unique_id = md5(string.format("%s|%s", config.url, config.user or ""))
+            key = string.format("%s_%s", key, string.sub(unique_id, 1, 12))
+        end
+        local cache_cfg = self:backgroundCacheConfig()
+        if cache_cfg and cache_cfg.delSetting then
+            cache_cfg:delSetting(key):flush()
+        end
     end
 
     -- Use the config name to generate the bookshelf ID for deletion
