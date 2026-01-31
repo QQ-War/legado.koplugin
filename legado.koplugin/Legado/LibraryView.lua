@@ -641,14 +641,21 @@ function LibraryView:openMenu(dimen)
                 function(result)
                     if result then
                         Backend:closeDbManager()
-                        local response = Backend:cleanAllBookCaches()
-                        Backend:HandleResponse(response, function(data)
-                            settings.servers_history = {}
-                            Backend:saveSettings(settings)
-                            MessageBox:notice("已清除")
-                            self:closeMenu()
-                        end, function(err_msg)
-                            MessageBox:error('操作失败：', tostring(err_msg))
+                        MessageBox:loading("清除中", function()
+                            return Backend:cleanAllBookCaches()
+                        end, function(state, response)
+                            if state == true and H.is_str(response) then
+                                local response_func = loadstring("return " .. response)
+                                if response_func then response = response_func() end
+                                Backend:HandleResponse(response, function(data)
+                                    settings.servers_history = {}
+                                    Backend:saveSettings(settings)
+                                    MessageBox:notice("已清除")
+                                    self:closeMenu()
+                                end, function(err_msg)
+                                    MessageBox:error('操作失败：', tostring(err_msg))
+                                end)
+                            end
                         end)
                     end
                 end, {

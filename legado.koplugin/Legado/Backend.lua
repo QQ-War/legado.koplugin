@@ -2055,7 +2055,7 @@ end
 
 function M:cleanBookCache(book_cache_id)
     if self:getBackgroundTaskInfo() ~= false then
-        return wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader')
+        return util.tableToString(wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader'))
     end
     local bookShelfId = self:getCurrentBookShelfId()
 
@@ -2066,17 +2066,18 @@ function M:cleanBookCache(book_cache_id)
 
         ffiUtil.purgeDir(book_cache_path)
 
-        return wrap_response(true)
+        return util.tableToString(wrap_response(true))
     else
-        return wrap_response(nil, '没有缓存')
+        return util.tableToString(wrap_response(nil, '没有缓存'))
     end
 end
 
 function M:cleanChapterCacheRange(book_cache_id, start_index, end_index)
     if self:getBackgroundTaskInfo() ~= false then
-        return wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader')
+        return util.tableToString(wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader'))
     end
-    local status = self:analyzeCacheStatusForRange(book_cache_id, start_index, end_index)
+    local status_str = self:analyzeCacheStatusForRange(book_cache_id, start_index, end_index)
+    local status = loadstring("return " .. status_str)()
     if H.is_tbl(status) and H.is_tbl(status.cached_chapters) and #status.cached_chapters > 0 then
         for _, chapter in ipairs(status.cached_chapters) do
             if chapter.cacheFilePath and util.fileExists(chapter.cacheFilePath) then
@@ -2090,15 +2091,15 @@ function M:cleanChapterCacheRange(book_cache_id, start_index, end_index)
                 cacheFilePath = '_NULL'
             })
         end
-        return wrap_response(true)
+        return util.tableToString(wrap_response(true))
     else
-        return wrap_response(nil, '选定范围内没有缓存')
+        return util.tableToString(wrap_response(nil, '选定范围内没有缓存'))
     end
 end
 
 function M:cleanReadChapterCache(book_cache_id)
     if self:getBackgroundTaskInfo() ~= false then
-        return wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader')
+        return util.tableToString(wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader'))
     end
     local chapters = self.dbManager:getReadChapters(book_cache_id)
     local deleted_count = 0
@@ -2119,15 +2120,15 @@ function M:cleanReadChapterCache(book_cache_id)
     end
     
     if deleted_count > 0 then
-        return wrap_response(true, string.format("成功清理 %d 章已读缓存", deleted_count))
+        return util.tableToString(wrap_response(true, string.format("成功清理 %d 章已读缓存", deleted_count)))
     else
-        return wrap_response(nil, '没有可清理的已读章节缓存')
+        return util.tableToString(wrap_response(nil, '没有可清理的已读章节缓存'))
     end
 end
 
 function M:cleanAllBookCaches()
     if self:getBackgroundTaskInfo() ~= false then
-        return wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader')
+        return util.tableToString(wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader'))
     end
 
     local bookShelfId = self:getCurrentBookShelfId()
@@ -2144,7 +2145,7 @@ function M:cleanAllBookCaches()
     end
 
     self:saveSettings()
-    return wrap_response(true)
+    return util.tableToString(wrap_response(true))
 end
 
 function M:MarkReadChapter(chapter, is_update_timestamp)

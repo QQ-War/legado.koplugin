@@ -175,11 +175,18 @@ function BookDetails:getButtonGroup(other_elements_height)
                                         function(result)
                                             if not result then return end
                                             Backend:closeDbManager()
-                                            local response = Backend:cleanReadChapterCache(self.bookinfo.cache_id)
-                                            Backend:HandleResponse(response, function(data)
-                                                MessageBox:success(tostring(data or "清理完成"))
-                                            end, function(err_msg)
-                                                MessageBox:error('失败：', err_msg)
+                                            MessageBox:loading("清理中 ", function()
+                                                return Backend:cleanReadChapterCache(self.bookinfo.cache_id)
+                                            end, function(state, response)
+                                                if state == true and H.is_str(response) then
+                                                    local response_func = loadstring("return " .. response)
+                                                    if response_func then response = response_func() end
+                                                    Backend:HandleResponse(response, function(data)
+                                                        MessageBox:success(tostring(data or "清理完成"))
+                                                    end, function(err_msg)
+                                                        MessageBox:error('失败：', err_msg)
+                                                    end)
+                                                end
                                             end)
                                         end)
                                 end,
@@ -245,12 +252,19 @@ function BookDetails:getButtonGroup(other_elements_height)
                                         function(result)
                                             if not result then return end
                                             Backend:closeDbManager()
-                                            local response = Backend:cleanBookCache(self.bookinfo.cache_id)
-                                            Backend:HandleResponse(response, function(data)
-                                                MessageBox:success("已清理")
-                                                self:_reload()
-                                            end, function(err_msg)
-                                                MessageBox:error('请稍后重试：', err_msg)
+                                            MessageBox:loading("清理中 ", function()
+                                                return Backend:cleanBookCache(self.bookinfo.cache_id)
+                                            end, function(state, response)
+                                                if state == true and H.is_str(response) then
+                                                    local response_func = loadstring("return " .. response)
+                                                    if response_func then response = response_func() end
+                                                    Backend:HandleResponse(response, function(data)
+                                                        MessageBox:success("已清理")
+                                                        self:_reload()
+                                                    end, function(err_msg)
+                                                        MessageBox:error('请稍后重试：', err_msg)
+                                                    end)
+                                                end
                                             end)
                                         end)
                                 end,
