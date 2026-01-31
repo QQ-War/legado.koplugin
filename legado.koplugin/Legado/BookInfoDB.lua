@@ -1440,10 +1440,25 @@ function M:disableAllBookShelves(bookShelfId)
     return self:getDB():exec("UPDATE books SET isEnabled = 0;")
 end
 
+function M:getShelfBookCacheIds(bookShelfId)
+    if not H.is_str(bookShelfId) then return {} end
+    local sql = "SELECT DISTINCT bookCacheId FROM books WHERE bookShelfId = ?"
+    local result = self:execute(sql, {bookShelfId})
+    local ids = {}
+    if result then
+        for _, row in ipairs(result) do
+            if row[1] then table.insert(ids, row[1]) end
+        end
+    end
+    return ids
+end
+
 function M:removeBookShelf(bookShelfId)
     if not H.is_str(bookShelfId) then
         return
     end
+    -- 同时删除关联的章节记录，防止孤立数据
+    self:execute("DELETE FROM chapters WHERE bookCacheId IN (SELECT bookCacheId FROM books WHERE bookShelfId = ?)", {bookShelfId})
     local delete_books_sql = "DELETE FROM books WHERE bookShelfId = ?"
     return self:execute(delete_books_sql, {bookShelfId})
 end

@@ -451,6 +451,10 @@ function M:addBookToLibrary(bookinfo)
     end))
 end
 function M:deleteBook(bookinfo)
+    if H.is_tbl(bookinfo) and H.is_str(bookinfo.cache_id) then
+        -- 删除书籍时同步清理本地缓存
+        self:cleanBookCache(bookinfo.cache_id)
+    end
     return wrap_response(self.apiClient:deleteBook(bookinfo))
 end
 function M:getChaptersList(bookinfo)
@@ -2590,6 +2594,16 @@ function M:deleteWebConfig(conf_name)
 
     -- Use the config name to generate the bookshelf ID for deletion
     local book_shelf_id = tostring(md5(conf_name))
+
+    -- 清理该配置下所有书籍的本地缓存
+    local book_cache_ids = self.dbManager:getShelfBookCacheIds(book_shelf_id)
+    for _, cache_id in ipairs(book_cache_ids) do
+        local book_cache_path = H.getBookCachePath(cache_id)
+        if book_cache_path and util.pathExists(book_cache_path) then
+            pcall(ffiUtil.purgeDir, book_cache_path)
+        end
+    end
+
     pcall(function() self.dbManager:removeBookShelf(book_shelf_id) end)
 
     self.settings_data.data.web_configs[conf_name] = nil
