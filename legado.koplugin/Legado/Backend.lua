@@ -1912,11 +1912,11 @@ function M:analyzeCacheStatusForRange(book_cache_id, start_index, end_index, sta
     local result = { total_count = 0, cached_count = 0, uncached_count = 0, cached_chapters = {}, uncached_chapters = {} }
     if not (H.is_str(book_cache_id) and H.is_num(start_index) and H.is_num(end_index)) then
         logger.err("analyzeCacheStatusForRange err - book_cache_id, start_index, end_index: ",book_cache_id, start_index, end_index)
-        return util.tableToString(result)
+        return result
     end
     if start_index < 0 or end_index < start_index then
         logger.err("analyzeCacheStatusForRange err - start_index, end_index: ",start_index, end_index)
-        return util.tableToString(result)
+        return result
     end
     for i = start_index, end_index do
         -- local all_chapters = self:getBookChapterPlusCache(book_cache_id)
@@ -1948,7 +1948,7 @@ function M:analyzeCacheStatusForRange(book_cache_id, start_index, end_index, sta
         end
     end
 
-    return util.tableToString(result)
+    return result
 end
 
 function M:getChapterInfoCache(bookCacheId, chapterIndex)
@@ -2076,8 +2076,13 @@ function M:cleanChapterCacheRange(book_cache_id, start_index, end_index)
     if self:getBackgroundTaskInfo() ~= false then
         return util.tableToString(wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader'))
     end
-    local status_str = self:analyzeCacheStatusForRange(book_cache_id, start_index, end_index)
-    local status = loadstring("return " .. status_str)()
+    local status = self:analyzeCacheStatusForRange(book_cache_id, start_index, end_index)
+    if H.is_str(status) then
+        local ok, parsed = pcall(loadstring("return " .. status))
+        if ok and H.is_tbl(parsed) then
+            status = parsed
+        end
+    end
     if H.is_tbl(status) and H.is_tbl(status.cached_chapters) and #status.cached_chapters > 0 then
         for _, chapter in ipairs(status.cached_chapters) do
             if chapter.cacheFilePath and util.fileExists(chapter.cacheFilePath) then
