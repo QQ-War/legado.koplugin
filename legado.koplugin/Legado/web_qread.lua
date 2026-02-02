@@ -447,6 +447,41 @@ function M:saveBookProgress(chapter, callback)
     }, 'saveBookProgress')
   end
 
+-- socket.url.escape util.urlEncode + / ? = @会被编码
+-- 处理 reader3 服务器版含书名路径有空格等问题
+local function custom_urlEncode(str)
+
+    if str == nil then
+        return ""
+    end
+    local segment_chars = {
+        ['-'] = true,
+        ['.'] = true,
+        ['_'] = true,
+        ['~'] = true,
+        [','] = true,
+        ['!'] = true,
+        ['*'] = true,
+        ['\''] = true,
+        ['('] = true,
+        [')'] = true,
+        ['/'] = true,
+        ['?'] = true,
+        ['&'] = true,
+        ['='] = true,
+        [':'] = true,
+        ['@'] = true
+    }
+
+    return string.gsub(str, "([^A-Za-z0-9_])", function(c)
+        if segment_chars[c] then
+            return c
+        else
+            return string.format("%%%02X", string.byte(c))
+        end
+    end)
+end
+
 function M:getProxyCoverUrl(coverUrl)
     if not H.is_str(coverUrl) then return coverUrl end
     local res_cover_src
@@ -471,6 +506,23 @@ function M:getProxyImageUrl(bookUrl, img_src)
     else
         return table.concat({server_address, '/proxypng?url=', util.urlEncode(clean_img_src)})
     end
+end
+
+function M:getProxyEpubUrl(bookUrl, htmlUrl)
+    if not H.is_str(htmlUrl) then
+        return htmlUrl
+    end
+    local server_address = self.settings.server_address
+    -- Root address (remove /api/5)
+    local root_url = server_address:gsub("/api/%d+$", "")
+    
+    if htmlUrl:match("^https?://") then
+        return htmlUrl
+    end
+    
+    -- Handle relative paths or internal URIs by encoding and making absolute
+    local final_html_url = custom_urlEncode(htmlUrl):gsub("^__API_ROOT__", "")
+    return socket_url.absolute(root_url, final_html_url)
 end
 
 function M:searchBookMulti(options, callback)

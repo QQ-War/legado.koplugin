@@ -390,6 +390,10 @@ function M:prepareChaptersForExport(bookinfo, only_cached, completion_callback)
         cache_status = self.chapter_cache_status
     else
         cache_status = Backend:analyzeCacheStatus(book_cache_id)
+        if H.is_str(cache_status) then
+            local status_func = loadstring("return " .. cache_status)
+            if status_func then cache_status = status_func() end
+        end
         if not (H.is_tbl(cache_status) and H.is_tbl(cache_status.cached_chapters) and H.is_tbl(cache_status.uncached_chapters)) then
             return completion_callback(false, { error = "查询章节缓存状态出错" })
         end
@@ -431,6 +435,10 @@ function M:cacheAllChapters(completion_callback)
     MessageBox:loading("正在统计已缓存章节", function()
         return Backend:analyzeCacheStatus(book_cache_id)
     end, function(state, response)
+        if state == true and H.is_str(response) then
+            local status_func = loadstring("return " .. response)
+            if status_func then response = status_func() end
+        end
         if not (state == true and H.is_tbl(response) and H.is_tbl(response.cached_chapters) and H.is_tbl(response.uncached_chapters)) then
             return MessageBox:error("查询章节缓存状态出错")
         end
@@ -500,6 +508,10 @@ function M:cacheSelectedChapters(start_chapter_index, down_chapter_count, comple
     MessageBox:loading("正在统计已缓存章节", function()
         return Backend:analyzeCacheStatusForRange(book_cache_id , start_index, target_chapter_count - 1)
     end, function(state, response)
+        if state == true and H.is_str(response) then
+            local status_func = loadstring("return " .. response)
+            if status_func then response = status_func() end
+        end
         if not (state == true and H.is_tbl(response) and H.is_tbl(response.cached_chapters) and H.is_tbl(response.uncached_chapters)) then
             return MessageBox:error("查询章节缓存状态出错")
         end
@@ -620,6 +632,10 @@ function M:checkCacheIntegrity(bookinfo, chapter_count, completion_callback, ret
     MessageBox:loading("正在检查缓存完整性", function()
         return Backend:analyzeCacheStatusForRange(book_cache_id, 0, chapter_count - 1, true)
     end, function(state, cache_status)
+        if state == true and H.is_str(cache_status) then
+            local status_func = loadstring("return " .. cache_status)
+            if status_func then cache_status = status_func() end
+        end
         if not (state == true and H.is_tbl(cache_status) and H.is_tbl(cache_status.cached_chapters) and H.is_tbl(cache_status.uncached_chapters)) then
             return MessageBox:error("查询章节缓存状态出错")
         end
@@ -834,6 +850,10 @@ function M:exportBook()
     MessageBox:loading("正在统计已缓存章节", function()
         return Backend:analyzeCacheStatus(book_cache_id)
     end, function(state, response)
+        if state == true and H.is_str(response) then
+            local status_func = loadstring("return " .. response)
+            if status_func then response = status_func() end
+        end
         if not (state == true and H.is_tbl(response) and H.is_tbl(response.cached_chapters) and H.is_tbl(response.uncached_chapters)) then
             return self:showExportErrorDialog("查询章节缓存状态出错")
         end
