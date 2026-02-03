@@ -502,8 +502,16 @@ function M:getProxyImageUrl(bookUrl, img_src)
     local server_address = self.settings.server_address
     if string.sub(clean_img_src, 1, 8) == "baseurl/" then
         local url_path = string.sub(clean_img_src, 8)
+        local token = self:reader3Token(true)
+        if token then
+            return table.concat({server_address, url_path, "?accessToken=", util.urlEncode(token)})
+        end
         return table.concat({server_address, url_path})
     else
+        local token = self:reader3Token(true)
+        if token then
+            return table.concat({server_address, '/proxypng?url=', util.urlEncode(clean_img_src), '&accessToken=', util.urlEncode(token)})
+        end
         return table.concat({server_address, '/proxypng?url=', util.urlEncode(clean_img_src)})
     end
 end

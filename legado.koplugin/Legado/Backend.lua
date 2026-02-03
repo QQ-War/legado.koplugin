@@ -1608,6 +1608,29 @@ function M:getPorxyPicUrls(bookUrl, content)
                 abs_url = socket_url.absolute(base, abs_url)
             end
         end
+        if H.is_str(abs_url) then
+            local asset_path
+            if abs_url:match("^https?://assets/") then
+                asset_path = "/assets/" .. abs_url:gsub("^https?://assets/", "")
+            elseif abs_url:match("^/assets/") then
+                asset_path = abs_url
+            elseif abs_url:match("^assets/") then
+                asset_path = "/assets/" .. abs_url:gsub("^assets/", "")
+            end
+            if asset_path then
+                local base_url = self.apiClient.client.base_url or (self.apiClient.settings and self.apiClient.settings.server_address) or ""
+                base_url = base_url:gsub("/+$", "")
+                if not base_url:find("/api/") then
+                    base_url = base_url .. "/api/5"
+                end
+                local query = { path = asset_path }
+                local token = self.apiClient:reader3Token(true)
+                if token then
+                    query.accessToken = token
+                end
+                abs_url = H.joinUrl(base_url, "assets") .. "?" .. H.encodeQuery(query)
+            end
+        end
         table.insert(new_picurls, abs_url)
     end
     return new_picurls
