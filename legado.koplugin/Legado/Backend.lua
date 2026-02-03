@@ -1588,11 +1588,23 @@ function M:getPorxyPicUrls(bookUrl, content)
     local MangaRules = require("Legado/MangaRules")
     local settings = self:getSettings()
     local new_picurls = {}
+    local function normalize_img_src(src)
+        if not H.is_str(src) then return src end
+        if src:match("^https?//") then
+            src = src:gsub("^http//", "http://"):gsub("^https//", "https://")
+        end
+        return src
+    end
     for i, img_src in ipairs(picUrls) do
-        local abs_url = MangaRules.getAbsoluteUrl(img_src, bookUrl)
+        local clean_src = normalize_img_src(img_src)
+        local abs_url = MangaRules.getAbsoluteUrl(clean_src, bookUrl)
         if H.is_str(abs_url) and not abs_url:match("^https?://") then
             local base = settings and settings.server_address or nil
             if H.is_str(base) and base ~= "" then
+                base = base:gsub("/api/%d+$", ""):gsub("/api/?$", "")
+                if abs_url:sub(1, 1) ~= "/" then
+                    abs_url = "/" .. abs_url
+                end
                 abs_url = socket_url.absolute(base, abs_url)
             end
         end
