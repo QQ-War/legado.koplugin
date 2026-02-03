@@ -904,7 +904,9 @@ processLink = function(book_cache_id, resources_src, base_url, is_porxy, callbac
         local bookUrl = base_url
         processed_src = M:getProxyImageUrl(bookUrl, resources_src)
     else
-        processed_src = util.trim(resources_src)
+        -- 使用增强的清洗逻辑
+        local MangaRules = require("Legado/MangaRules")
+        processed_src = MangaRules.sanitizeImageUrl(resources_src)
 
         local lower_src = processed_src:lower()
         if lower_src:find("^data:") then
@@ -1588,48 +1590,57 @@ function M:getPorxyPicUrls(bookUrl, content)
     local MangaRules = require("Legado/MangaRules")
     local settings = self:getSettings()
     local new_picurls = {}
-    local function normalize_img_src(src)
-        if not H.is_str(src) then return src end
-        if src:match("^https?//") then
-            src = src:gsub("^http//", "http://"):gsub("^https//", "https://")
-        end
-        return src
-    end
+    
     for i, img_src in ipairs(picUrls) do
-        local clean_src = normalize_img_src(img_src)
+        -- 先进行基础清洗
+        local clean_src = MangaRules.sanitizeImageUrl(img_src)
         local abs_url = MangaRules.getAbsoluteUrl(clean_src, bookUrl)
-        if H.is_str(abs_url) and not abs_url:match("^https?://") then
-            local base = settings and settings.server_address or nil
-            if H.is_str(base) and base ~= "" then
-                base = base:gsub("/api/%d+$", ""):gsub("/api/?$", "")
-                if abs_url:sub(1, 1) ~= "/" then
-                    abs_url = "/" .. abs_url
-                end
-                abs_url = socket_url.absolute(base, abs_url)
-            end
-        end
+        
         if H.is_str(abs_url) then
-            local asset_path
-            if abs_url:match("^https?://assets/") then
-                asset_path = "/assets/" .. abs_url:gsub("^https?://assets/", "")
-            elseif abs_url:match("^/assets/") then
+            -- 识别资产路径逻辑 (兼容 http://assets/, https://assets/, /assets/, assets/)
+            local asset_path = nil
+            local lower_url = abs_url:lower()
+            
+            if lower_url:find("^https?://assets/") then
+                asset_path = "/assets/" .. abs_url:gsub("^https?://[Aa][Ss][Ss][Ee][Tt][Ss]/", "")
+            elseif lower_url:find("^/assets/") then
                 asset_path = abs_url
-            elseif abs_url:match("^assets/") then
-                asset_path = "/assets/" .. abs_url:gsub("^assets/", "")
+            elseif lower_url:find("^assets/") then
+                asset_path = "/" .. abs_url
+            elseif lower_url:find("^%.%.%/assets/") then
+                asset_path = "/assets/" .. abs_url:sub(11)
             end
+            
+            -- 如果识别为资产路径，则强制走后端 assets 代理接口
             if asset_path then
+                -- 修正冗余的 /assets/assets/
+                if asset_path:find("^/assets/assets/") then
+                    asset_path = asset_path:sub(8)
+                end
+                
                 local base_url = self.apiClient.client.base_url or (self.apiClient.settings and self.apiClient.settings.server_address) or ""
                 base_url = base_url:gsub("/+$", "")
                 if not base_url:find("/api/") then
                     base_url = base_url .. "/api/5"
                 end
+                
                 local query = { path = asset_path }
                 local token = self.apiClient:reader3Token(true)
                 if token then
                     query.accessToken = token
                     abs_url = H.joinUrl(base_url, "assets") .. "?" .. H.encodeQuery(query)
                 else
-                    abs_url = nil
+                    abs_url = nil -- 资产路径必须带 Token 访问
+                end
+            elseif not abs_url:match("^https?://") then
+                -- 如果不是资产路径也不是绝对 URL，尝试补全后端域名
+                local base = settings and settings.server_address or nil
+                if H.is_str(base) and base ~= "" then
+                    base = base:gsub("/api/%d+$", ""):gsub("/api/?$", "")
+                    if abs_url:sub(1, 1) ~= "/" then
+                        abs_url = "/" .. abs_url
+                    end
+                    abs_url = socket_url.absolute(base, abs_url)
                 end
             end
         end

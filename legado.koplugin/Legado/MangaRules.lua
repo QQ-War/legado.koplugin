@@ -103,6 +103,20 @@ end
 
 function M.sanitizeImageUrl(url)
     if not url or type(url) ~= "string" then return url end
+    
+    -- 0. 处理畸形协议前缀 http// 或 https// 或 http:/ (不带 //)
+    local trimmed = url:gsub("^%s+", ""):gsub("%s+$", "")
+    if trimmed:find("^http//") then
+        trimmed = "http://" .. trimmed:sub(7)
+    elseif trimmed:find("^https//") then
+        trimmed = "https://" .. trimmed:sub(8)
+    elseif trimmed:find("^http:/") and not trimmed:find("^http://") then
+        trimmed = "http://" .. trimmed:sub(7)
+    elseif trimmed:find("^https:/") and not trimmed:find("^https://") then
+        trimmed = "https://" .. trimmed:sub(8)
+    end
+    url = trimmed
+
     -- 1. 处理 Legado 格式: url,{...} 或 url,%7B...}
     local clean_url = url:gsub(",%s*[{%%].*$", "")
     
