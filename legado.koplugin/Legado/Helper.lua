@@ -411,8 +411,8 @@ M.encodeQuery = function(t)
 end
 
 M.joinUrl = function(base, path)
-    if not H.is_str(base) then return path or "" end
-    if not H.is_str(path) then return base end
+    if not M.is_str(base) then return path or "" end
+    if not M.is_str(path) then return base end
     local b = base
     if b:sub(-1) ~= "/" then
         b = b .. "/"
