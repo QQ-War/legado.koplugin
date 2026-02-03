@@ -1627,8 +1627,10 @@ function M:getPorxyPicUrls(bookUrl, content)
                 local token = self.apiClient:reader3Token(true)
                 if token then
                     query.accessToken = token
+                    abs_url = H.joinUrl(base_url, "assets") .. "?" .. H.encodeQuery(query)
+                else
+                    abs_url = nil
                 end
-                abs_url = H.joinUrl(base_url, "assets") .. "?" .. H.encodeQuery(query)
             end
         end
         table.insert(new_picurls, abs_url)
