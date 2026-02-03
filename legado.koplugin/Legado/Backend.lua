@@ -1172,12 +1172,14 @@ function M:_AnalyzingChapters(chapter, content, filePath)
                 if use_proxy then
                     -- Mode 1: Proxy first with local fallback
                     local proxy_url = self:getProxyImageUrl(bookUrl, res_url)
+                    logger.info("legado img fetch (proxy):", proxy_url, "bookUrl=", tostring(bookUrl), "res_url=", tostring(res_url))
                     status, err = pGetUrlContent({
                         url = proxy_url,
                         timeout = 20,
                         maxtime = 80,
                     })
                     if not status then
+                        logger.info("legado img fetch proxy failed, fallback local:", tostring(err))
                         status, err = pGetUrlContent({
                             url = res_url,
                             timeout = 15,
@@ -1187,6 +1189,7 @@ function M:_AnalyzingChapters(chapter, content, filePath)
                     end
                 else
                     -- Mode 2: Strictly local
+                    logger.info("legado img fetch (local):", tostring(res_url), "bookUrl=", tostring(bookUrl))
                     status, err = pGetUrlContent({
                         url = res_url,
                         timeout = 15,
@@ -1196,6 +1199,7 @@ function M:_AnalyzingChapters(chapter, content, filePath)
                 end
 
                 if not status then
+                    logger.info("legado img fetch failed:", tostring(err), "url=", tostring(res_url))
                     error('请求错误，' .. tostring(err))
                 end
                 if not (H.is_tbl(err) and err["data"]) then
