@@ -486,6 +486,60 @@ function M:getProxyCoverUrl(coverUrl)
     if not H.is_str(coverUrl) then return coverUrl end
     local res_cover_src
     local server_address = self.settings.server_address
+    local function normalize_local_asset_path(raw)
+        if not H.is_str(raw) or raw == "" then return nil end
+        local lower = raw:lower()
+        local path = nil
+        if lower:find("/assets%?path=") then
+            local p = raw:match("[?&]path=([^&]+)")
+            if p then
+                path = util.urlDecode(p)
+            end
+        elseif lower:find("^/covers/") or lower:find("^covers/") then
+            path = raw:gsub("^/+", "") -- covers/...
+            path = "/assets/" .. path
+        elseif lower:find("^/assets/") then
+            path = raw
+        elseif lower:find("^assets/") then
+            path = "/" .. raw
+        elseif lower:find("^/book%-assets/") then
+            path = raw
+        elseif lower:find("^book%-assets/") then
+            path = "/" .. raw
+        elseif lower:find("^%.%./assets/") then
+            path = "/assets/" .. raw:sub(11)
+        elseif lower:find("^%.%./book%-assets/") then
+            path = "/book-assets/" .. raw:sub(16)
+        elseif lower:find("/assets/") or lower:find("/book%-assets/") then
+            local idx = lower:find("/assets/")
+            if idx then
+                path = raw:sub(idx)
+            else
+                idx = lower:find("/book%-assets/")
+                if idx then
+                    path = raw:sub(idx)
+                end
+            end
+        end
+        if H.is_str(path) then
+            path = path:gsub("/%./", "/")
+        end
+        return path
+    end
+
+    local function build_assets_url(path)
+        if not H.is_str(path) or path == "" then return nil end
+        local base = server_address:gsub("/+$", "")
+        if not base:find("/api/") then
+            base = base .. "/api/5"
+        end
+        return table.concat({ base, "/assets?path=", util.urlEncode(path) })
+    end
+
+    local local_path = normalize_local_asset_path(coverUrl)
+    if local_path then
+        return build_assets_url(local_path)
+    end
     if string.sub(coverUrl, 1, 8) == "baseurl/" then
          -- coverUrl baseurl/proxypng?url=https%3A%2F%2Ft.test.cc%2F20255%2Fcover%2F59537.jpg
          -- 139646s.webp
@@ -510,8 +564,59 @@ function M:getProxyImageUrl(bookUrl, img_src)
     if clean_img_src:find("/api/5/pdfImage") or clean_img_src:find("/api/v5/pdfImage") then
         return clean_img_src
     end
-    if clean_img_src:find("^https?://assets/") or clean_img_src:find("/assets/") or clean_img_src:find("/book%-assets/") then
-        return clean_img_src
+    local function normalize_local_asset_path(raw)
+        if not H.is_str(raw) or raw == "" then return nil end
+        local lower = raw:lower()
+        local path = nil
+        if lower:find("/assets%?path=") then
+            local p = raw:match("[?&]path=([^&]+)")
+            if p then
+                path = util.urlDecode(p)
+            end
+        elseif lower:find("^/covers/") or lower:find("^covers/") then
+            path = raw:gsub("^/+", "")
+            path = "/assets/" .. path
+        elseif lower:find("^/assets/") then
+            path = raw
+        elseif lower:find("^assets/") then
+            path = "/" .. raw
+        elseif lower:find("^/book%-assets/") then
+            path = raw
+        elseif lower:find("^book%-assets/") then
+            path = "/" .. raw
+        elseif lower:find("^%.%./assets/") then
+            path = "/assets/" .. raw:sub(11)
+        elseif lower:find("^%.%./book%-assets/") then
+            path = "/book-assets/" .. raw:sub(16)
+        elseif lower:find("/assets/") or lower:find("/book%-assets/") then
+            local idx = lower:find("/assets/")
+            if idx then
+                path = raw:sub(idx)
+            else
+                idx = lower:find("/book%-assets/")
+                if idx then
+                    path = raw:sub(idx)
+                end
+            end
+        end
+        if H.is_str(path) then
+            path = path:gsub("/%./", "/")
+        end
+        return path
+    end
+
+    local function build_assets_url(path)
+        if not H.is_str(path) or path == "" then return nil end
+        local base = server_address:gsub("/+$", "")
+        if not base:find("/api/") then
+            base = base .. "/api/5"
+        end
+        return table.concat({ base, "/assets?path=", util.urlEncode(path) })
+    end
+
+    local local_path = normalize_local_asset_path(clean_img_src)
+    if local_path then
+        return build_assets_url(local_path)
     end
     if string.sub(clean_img_src, 1, 8) == "baseurl/" then
         local url_path = string.sub(clean_img_src, 8)

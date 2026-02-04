@@ -138,6 +138,12 @@ local function isLocalAssetUrl(url)
     if lower:find("/api/5/pdfimage") or lower:find("/api/v5/pdfimage") then
         return true
     end
+    if lower:find("/assets%?path=") then
+        return true
+    end
+    if lower:find("^/covers/") or lower:find("^covers/") then
+        return true
+    end
     if lower:find("^https?://assets/") then
         return true
     end
