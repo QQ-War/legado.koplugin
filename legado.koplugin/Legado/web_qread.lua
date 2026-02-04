@@ -486,6 +486,13 @@ function M:getProxyCoverUrl(coverUrl)
     if not H.is_str(coverUrl) then return coverUrl end
     local res_cover_src
     local server_address = self.settings.server_address
+    if coverUrl:find("/api/5/pdfImage") or coverUrl:find("/api/v5/pdfImage") or
+        coverUrl:find("/api/5/assets") or coverUrl:find("/api/v5/assets") then
+        if coverUrl:match("^https?://") then
+            return coverUrl
+        end
+        return H.joinUrl(server_address, coverUrl)
+    end
     local function normalize_local_asset_path(raw)
         if not H.is_str(raw) or raw == "" then return nil end
         local lower = raw:lower()
@@ -556,10 +563,16 @@ function M:getProxyImageUrl(bookUrl, img_src)
     local clean_img_src = MangaRules.sanitizeImageUrl(img_src)
     local server_address = self.settings.server_address
     if clean_img_src:find("/api/5/assets") or clean_img_src:find("/api/v5/assets") then
-        return clean_img_src
+        if clean_img_src:match("^https?://") then
+            return clean_img_src
+        end
+        return H.joinUrl(server_address, clean_img_src)
     end
     if clean_img_src:find("/api/5/pdfImage") or clean_img_src:find("/api/v5/pdfImage") then
-        return clean_img_src
+        if clean_img_src:match("^https?://") then
+            return clean_img_src
+        end
+        return H.joinUrl(server_address, clean_img_src)
     end
     local function normalize_local_asset_path(raw)
         if not H.is_str(raw) or raw == "" then return nil end
