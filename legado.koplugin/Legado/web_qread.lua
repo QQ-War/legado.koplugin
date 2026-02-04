@@ -504,6 +504,12 @@ function M:getProxyImageUrl(bookUrl, img_src)
     local MangaRules = require("Legado/MangaRules")
     local clean_img_src = MangaRules.sanitizeImageUrl(img_src)
     local server_address = self.settings.server_address
+    if clean_img_src:find("/api/5/assets") or clean_img_src:find("/api/v5/assets") then
+        return clean_img_src
+    end
+    if clean_img_src:find("^https?://assets/") or clean_img_src:find("/assets/") or clean_img_src:find("/book%-assets/") then
+        return clean_img_src
+    end
     if string.sub(clean_img_src, 1, 8) == "baseurl/" then
         local url_path = string.sub(clean_img_src, 8)
         local token = self:reader3Token(true)

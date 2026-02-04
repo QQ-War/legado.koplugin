@@ -129,6 +129,29 @@ local function pGetUrlContent(options)
     return M.httpReq(options, true)
 end
 
+local function isLocalAssetUrl(url)
+    if not H.is_str(url) then return false end
+    local lower = url:lower()
+    if lower:find("/api/5/assets") or lower:find("/api/v5/assets") then
+        return true
+    end
+    if lower:find("^https?://assets/") then
+        return true
+    end
+    if lower:find("/assets/") or lower:find("/book%-assets/") then
+        local base_url = (M.apiClient and M.apiClient.client and M.apiClient.client.base_url)
+            or (M.apiClient and M.apiClient.settings and M.apiClient.settings.server_address)
+            or ""
+        if base_url ~= "" then
+            base_url = base_url:lower():gsub("/+$", "")
+            if lower:find("^" .. base_url:gsub("([%.%-%+%[%]%(%)%$%^%?])", "%%%1")) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 local function pDownload_CreateCBZ(self, chapter, filePath, img_sources, bookUrl)
 
     dbg.v('CreateCBZ strat:')
@@ -1191,7 +1214,7 @@ function M:_AnalyzingChapters(chapter, content, filePath)
                 local use_proxy = settings.manga_proxy_download == true
                 local status, err
                 
-                if use_proxy then
+                if use_proxy and not isLocalAssetUrl(res_url) then
                     -- Mode 1: Proxy first with local fallback
                     local proxy_url = self:getProxyImageUrl(bookUrl, res_url)
                     logger.info("legado img fetch (proxy):", proxy_url, "bookUrl=", tostring(bookUrl), "res_url=", tostring(res_url))
