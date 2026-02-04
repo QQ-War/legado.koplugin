@@ -65,6 +65,30 @@ local function pGetUrlContent(options)
         M.httpReq = require("Legado.HttpRequest")
     end
 
+    local function injectAuthHeader(opts)
+        if not opts or not opts.url then return end
+        if not (M.apiClient and M.apiClient.reader3Token) then return end
+        local token = M.apiClient:reader3Token(true)
+        if not token or token == "" then return end
+
+        local socket_url = require("socket.url")
+        local parsed = socket_url.parse(opts.url)
+        if not parsed or not parsed.host then return end
+
+        local base_url = (M.apiClient.client and M.apiClient.client.base_url)
+            or (M.apiClient.settings and M.apiClient.settings.server_address)
+            or ""
+        if base_url == "" then return end
+
+        local base_parsed = socket_url.parse(base_url)
+        if not base_parsed or not base_parsed.host then return end
+
+        if parsed.host == base_parsed.host then
+            opts.headers = opts.headers or {}
+            opts.headers["Authorization"] = "Bearer " .. token
+        end
+    end
+
     if options and options.is_pic then
         -- 核心修复：无论直连还是代理，发起请求前统一清洗 URL 和纠错域名
         options.url = MangaRules.sanitizeImageUrl(options.url)
@@ -99,6 +123,8 @@ local function pGetUrlContent(options)
             end
         end
     end
+
+    injectAuthHeader(options)
 
     return M.httpReq(options, true)
 end
@@ -1062,12 +1088,6 @@ local function pDownload_ChapterPackage(self, chapter, filePath)
         v = os.time()
     }
     
-    -- 如果有 token，带上它
-    local token = self.apiClient:reader3Token(true)
-    if token then
-        query.accessToken = token
-    end
-    
     local full_url = api_url .. "?" .. H.encodeQuery(query)
     dbg.v('ChapterPackage URL:', full_url)
     
@@ -1627,7 +1647,6 @@ function M:getPorxyPicUrls(bookUrl, content)
                 local query = { path = asset_path }
                 local token = self.apiClient:reader3Token(true)
                 if token then
-                    query.accessToken = token
                     abs_url = H.joinUrl(base_url, "assets") .. "?" .. H.encodeQuery(query)
                 else
                     abs_url = nil -- 资产路径必须带 Token 访问

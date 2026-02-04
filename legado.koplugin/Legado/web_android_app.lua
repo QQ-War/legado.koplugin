@@ -63,13 +63,8 @@ function M:init()
 
             local loginSuccess, token = self:_reader3Login()
             if loginSuccess == true and type(token) == 'string' and token ~= '' then
-
-                local accessToken = string.format("accessToken=%s", token)
-                if type(req.env.QUERY_STRING) == 'string' and #req.env.QUERY_STRING > 0 then
-                    req.env.QUERY_STRING = req.env.QUERY_STRING .. '&' .. accessToken
-                else
-                    req.env.QUERY_STRING = accessToken
-                end
+                req.headers = req.headers or {}
+                req.headers["Authorization"] = "Bearer " .. token
             else
                 logger.warn('Legado3Auth', '登录失败', token or 'nil')
             end

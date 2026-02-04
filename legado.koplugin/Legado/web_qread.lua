@@ -492,11 +492,11 @@ function M:getProxyCoverUrl(coverUrl)
         local url_path = string.sub(coverUrl, 8)
         local token = self:reader3Token(true)
         if not token then return nil end
-        res_cover_src = table.concat({server_address, url_path, "?accessToken=", util.urlEncode(token)})
+        res_cover_src = table.concat({server_address, url_path})
     else
         local token = self:reader3Token(true)
         if not token then return nil end
-        res_cover_src = table.concat({server_address, '/proxypng?url=', util.urlEncode(coverUrl), '&accessToken=', util.urlEncode(token)})
+        res_cover_src = table.concat({server_address, '/proxypng?url=', util.urlEncode(coverUrl)})
     end
     return res_cover_src
 end
@@ -508,13 +508,13 @@ function M:getProxyImageUrl(bookUrl, img_src)
         local url_path = string.sub(clean_img_src, 8)
         local token = self:reader3Token(true)
         if token then
-            return table.concat({server_address, url_path, "?accessToken=", util.urlEncode(token)})
+            return table.concat({server_address, url_path})
         end
         return nil
     else
         local token = self:reader3Token(true)
         if token then
-            return table.concat({server_address, '/proxypng?url=', util.urlEncode(clean_img_src), '&accessToken=', util.urlEncode(token)})
+            return table.concat({server_address, '/proxypng?url=', util.urlEncode(clean_img_src)})
         end
         return nil
     end
