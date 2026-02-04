@@ -495,9 +495,6 @@ function M:getProxyCoverUrl(coverUrl)
             if p then
                 path = util.urlDecode(p)
             end
-        elseif lower:find("^/covers/") or lower:find("^covers/") then
-            path = raw:gsub("^/+", "") -- covers/...
-            path = "/assets/" .. path
         elseif lower:find("^/assets/") then
             path = raw
         elseif lower:find("^assets/") then
@@ -573,9 +570,6 @@ function M:getProxyImageUrl(bookUrl, img_src)
             if p then
                 path = util.urlDecode(p)
             end
-        elseif lower:find("^/covers/") or lower:find("^covers/") then
-            path = raw:gsub("^/+", "")
-            path = "/assets/" .. path
         elseif lower:find("^/assets/") then
             path = raw
         elseif lower:find("^assets/") then
