@@ -486,12 +486,21 @@ function M:getProxyCoverUrl(coverUrl)
     if not H.is_str(coverUrl) then return coverUrl end
     local res_cover_src
     local server_address = self.settings.server_address
+    local function buildApiUrl(path)
+        if not H.is_str(path) or path == "" then return path end
+        if path:match("^https?://") then return path end
+        local root = server_address:gsub("/api/%d+$", ""):gsub("/api/?$", "")
+        if path:sub(1, 1) ~= "/" then
+            path = "/" .. path
+        end
+        if path:find("^/api/") then
+            return root .. path
+        end
+        return H.joinUrl(server_address, path)
+    end
     if coverUrl:find("/api/5/pdfImage") or coverUrl:find("/api/v5/pdfImage") or
         coverUrl:find("/api/5/assets") or coverUrl:find("/api/v5/assets") then
-        if coverUrl:match("^https?://") then
-            return coverUrl
-        end
-        return H.joinUrl(server_address, coverUrl)
+        return buildApiUrl(coverUrl)
     end
     local function normalize_local_asset_path(raw)
         if not H.is_str(raw) or raw == "" then return nil end
@@ -562,17 +571,23 @@ function M:getProxyImageUrl(bookUrl, img_src)
     local MangaRules = require("Legado/MangaRules")
     local clean_img_src = MangaRules.sanitizeImageUrl(img_src)
     local server_address = self.settings.server_address
-    if clean_img_src:find("/api/5/assets") or clean_img_src:find("/api/v5/assets") then
-        if clean_img_src:match("^https?://") then
-            return clean_img_src
+    local function buildApiUrl(path)
+        if not H.is_str(path) or path == "" then return path end
+        if path:match("^https?://") then return path end
+        local root = server_address:gsub("/api/%d+$", ""):gsub("/api/?$", "")
+        if path:sub(1, 1) ~= "/" then
+            path = "/" .. path
         end
-        return H.joinUrl(server_address, clean_img_src)
+        if path:find("^/api/") then
+            return root .. path
+        end
+        return H.joinUrl(server_address, path)
+    end
+    if clean_img_src:find("/api/5/assets") or clean_img_src:find("/api/v5/assets") then
+        return buildApiUrl(clean_img_src)
     end
     if clean_img_src:find("/api/5/pdfImage") or clean_img_src:find("/api/v5/pdfImage") then
-        if clean_img_src:match("^https?://") then
-            return clean_img_src
-        end
-        return H.joinUrl(server_address, clean_img_src)
+        return buildApiUrl(clean_img_src)
     end
     local function normalize_local_asset_path(raw)
         if not H.is_str(raw) or raw == "" then return nil end
