@@ -507,6 +507,9 @@ function M:getProxyImageUrl(bookUrl, img_src)
     if clean_img_src:find("/api/5/assets") or clean_img_src:find("/api/v5/assets") then
         return clean_img_src
     end
+    if clean_img_src:find("/api/5/pdfImage") or clean_img_src:find("/api/v5/pdfImage") then
+        return clean_img_src
+    end
     if clean_img_src:find("^https?://assets/") or clean_img_src:find("/assets/") or clean_img_src:find("/book%-assets/") then
         return clean_img_src
     end
