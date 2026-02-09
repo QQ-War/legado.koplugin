@@ -831,12 +831,14 @@ end
 function M:getReadChapters(bookCacheId)
     local sql_stmt = [[
         SELECT 
-        chapterIndex, 
-        title, 
-        cacheFilePath
-    FROM chapters 
+        c.chapterIndex, 
+        c.title, 
+        c.cacheFilePath,
+        b.name
+    FROM chapters AS c
+    INNER JOIN books AS b ON c.bookCacheId = b.bookCacheId
     WHERE 
-         bookCacheId = ? AND isRead = 1 AND cacheFilePath IS NOT NULL;]]
+         c.bookCacheId = ? AND c.isRead = 1;]]
 
     local result = self:execute(sql_stmt, {bookCacheId})
 
@@ -849,6 +851,7 @@ function M:getReadChapters(bookCacheId)
                 chapters_index = tonumber(row[1]),
                 title = row[2],
                 cacheFilePath = row[3],
+                name = row[4],
             }
         end
     end
@@ -1260,6 +1263,12 @@ function M:clearBook(bookShelfId, book_cache_id)
             isRead = 0
         }, {
             bookCacheId = book_cache_id
+        })
+        self:dynamicUpdate('books', {
+            cacheExt = self.nil_object()
+        }, {
+            bookCacheId = book_cache_id,
+            bookShelfId = bookShelfId
         })
         return true
     end, {

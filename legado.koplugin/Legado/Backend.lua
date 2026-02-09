@@ -2160,6 +2160,26 @@ function M:closeDbManager()
     end
 end
 
+local function _deleteAllChapterFiles(book_cache_id, chapters_index, book_name, chapter_title)
+    local name_for_path = chapter_title or book_name or ""
+    local base_path = H.getChapterCacheFilePath(book_cache_id, chapters_index, name_for_path)
+    local extensions = {'html', 'cbz', 'xhtml', 'txt', 'png', 'jpg', 'jpeg'}
+    local deleted_any = false
+    
+    for _, ext in ipairs(extensions) do
+        local full_path = base_path .. '.' .. ext
+        if util.fileExists(full_path) then
+            pcall(function()
+                require("docsettings"):open(full_path):purge()
+            end)
+            if util.removeFile(full_path) then
+                deleted_any = true
+            end
+        end
+    end
+    return deleted_any
+end
+
 function M:cleanBookCache(book_cache_id)
     if self:getBackgroundTaskInfo() ~= false then
         return util.tableToString(wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader'))
@@ -2170,9 +2190,11 @@ function M:cleanBookCache(book_cache_id)
 
     local book_cache_path = H.getBookCachePath(book_cache_id)
     if book_cache_path and util.pathExists(book_cache_path) then
-
         ffiUtil.purgeDir(book_cache_path)
-
+        -- 尝试额外清理资源目录并确保路径干净
+        pcall(util.removePath, H.joinPath(book_cache_path, "resources"))
+        pcall(util.removePath, book_cache_path)
+        
         return util.tableToString(wrap_response(true))
     else
         return util.tableToString(wrap_response(nil, '没有缓存'))
@@ -2183,27 +2205,37 @@ function M:cleanChapterCacheRange(book_cache_id, start_index, end_index)
     if self:getBackgroundTaskInfo() ~= false then
         return util.tableToString(wrap_response(nil, '有后台任务进行中，请等待结束或者重启 KOReader'))
     end
-    local status = self:analyzeCacheStatusForRange(book_cache_id, start_index, end_index)
-    if H.is_str(status) then
-        local ok, parsed = pcall(loadstring("return " .. status))
-        if ok and H.is_tbl(parsed) then
-            status = parsed
-        end
-    end
-    if H.is_tbl(status) and H.is_tbl(status.cached_chapters) and #status.cached_chapters > 0 then
-        for _, chapter in ipairs(status.cached_chapters) do
+    
+    local deleted_count = 0
+    -- 获取该书籍的基本信息（主要是书名，用于构建路径）
+    local book_info = self:getBookInfoCache(book_cache_id)
+    local book_name = H.is_tbl(book_info) and book_info.name or ""
+
+    for i = start_index, end_index do
+        local chapter = self.dbManager:getChapterInfo(book_cache_id, i)
+        if H.is_tbl(chapter) then
+            -- 1. 根据记录的路径清理
             if chapter.cacheFilePath and util.fileExists(chapter.cacheFilePath) then
                 pcall(function()
                     require("docsettings"):open(chapter.cacheFilePath):purge()
                 end)
                 util.removeFile(chapter.cacheFilePath)
             end
+            
+            -- 2. 扫荡式清理所有可能格式的残留
+            if _deleteAllChapterFiles(book_cache_id, i, book_name, chapter.title) then
+                deleted_count = deleted_count + 1
+            end
+
             self.dbManager:dynamicUpdateChapters(chapter, {
                 content = '_NULL',
                 cacheFilePath = '_NULL'
             })
         end
-        return util.tableToString(wrap_response(true))
+    end
+
+    if deleted_count > 0 then
+        return util.tableToString(wrap_response(true, string.format("成功清理 %d 章缓存", deleted_count)))
     else
         return util.tableToString(wrap_response(nil, '选定范围内没有缓存'))
     end
@@ -2217,13 +2249,22 @@ function M:cleanReadChapterCache(book_cache_id)
     local deleted_count = 0
     if H.is_tbl(chapters) and #chapters > 0 then
         for _, chapter in ipairs(chapters) do
+            local book_name = chapter.name or ""
+            local chapter_title = chapter.title or ""
+            
+            -- 1. 清理记录的路径
             if chapter.cacheFilePath and util.fileExists(chapter.cacheFilePath) then
                 pcall(function()
                     require("docsettings"):open(chapter.cacheFilePath):purge()
                 end)
                 util.removeFile(chapter.cacheFilePath)
+            end
+            
+            -- 2. 扫荡式清理该章节的所有可能文件后缀
+            if _deleteAllChapterFiles(book_cache_id, chapter.chapters_index, book_name, chapter_title) then
                 deleted_count = deleted_count + 1
             end
+
             self.dbManager:dynamicUpdateChapters(chapter, {
                 content = '_NULL',
                 cacheFilePath = '_NULL'
@@ -2234,6 +2275,10 @@ function M:cleanReadChapterCache(book_cache_id)
     if deleted_count > 0 then
         return util.tableToString(wrap_response(true, string.format("成功清理 %d 章已读缓存", deleted_count)))
     else
+        -- 即使没有文件被删，如果数据库有记录被重置也算成功（兼容性处理）
+        if H.is_tbl(chapters) and #chapters > 0 then
+            return util.tableToString(wrap_response(true, "已重置已读章节状态"))
+        end
         return util.tableToString(wrap_response(nil, '没有可清理的已读章节缓存'))
     end
 end
