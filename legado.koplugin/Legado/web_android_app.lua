@@ -73,6 +73,7 @@ function M:init()
 
             local loginSuccess, token = self:_reader3Login()
             if loginSuccess == true and type(token) == 'string' and token ~= '' then
+                logger.info(string.format("Legado3Auth before: path=%s params=%s", tostring(req.path), tostring(req.params)))
                 -- Match ReadApp behavior: always set Authorization header and also append accessToken in query.
                 req.headers = req.headers or {}
                 req.headers["Authorization"] = "Bearer " .. token
@@ -106,6 +107,7 @@ function M:init()
                 else
                     req.params = "accessToken=" .. socket_url.escape(token)
                 end
+                logger.info(string.format("Legado3Auth after: path=%s params=%s", tostring(req.path), tostring(req.params)))
             else
                 logger.warn('Legado3Auth', '登录失败', token or 'nil')
             end
