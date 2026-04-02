@@ -96,11 +96,8 @@ function M:getLuaConfig(path)
 end
 
 function M:withToken(params)
-    if type(params) ~= "table" then return params end
-    local token = self:reader3Token(true)
-    if H.is_str(token) and token ~= "" and params.accessToken == nil then
-        params.accessToken = token
-    end
+    -- 由于现在统一在 Legado3Auth 中间件中通过 Header 注入 Authorization，
+    -- 这里不再向 Query Params 中注入 accessToken，避免 Spore 校验报错。
     return params
 end
 
