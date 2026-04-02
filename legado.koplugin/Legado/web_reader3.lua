@@ -4,17 +4,6 @@ local util = require("util")
 local socket_url = require("socket.url")
 local H = require("Legado/Helper")
 local LegadoSpec = require("Legado/web_android_app")
-local JSON = require("json")
-
-local function safe_dump(value)
-    if type(value) == "table" then
-        local ok, encoded = pcall(JSON.encode, value)
-        if ok and encoded then
-            return encoded
-        end
-    end
-    return tostring(value)
-end
 
 local M = LegadoSpec:extend{
   name = "reader3",
@@ -61,12 +50,6 @@ function M:reader3Login()
         return false,
             (res.body and res.body.errorMsg) and res.body.errorMsg or "服务器返回了无效的数据结构"
     end
-    logger.info(string.format(
-        "reader3Login response: isSuccess=%s errorMsg=%s dataType=%s",
-        tostring(res.body.isSuccess),
-        tostring(res.body.errorMsg),
-        tostring(type(res.body.data))
-    ))
     if not (H.is_tbl(res.body.data) and H.is_str(res.body.data.accessToken)) then
         return false, '获取 Token 失败'
     end
