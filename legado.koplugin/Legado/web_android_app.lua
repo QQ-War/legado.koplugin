@@ -72,43 +72,7 @@ function M:init()
         if true == self._need_login then
 
             local loginSuccess, token = self:_reader3Login()
-            if loginSuccess == true and type(token) == 'string' and token ~= '' then
-                logger.info(string.format("Legado3Auth before: path=%s params=%s", tostring(req.path), tostring(req.params)))
-                -- Match ReadApp behavior: always set Authorization header and also append accessToken in query.
-                req.headers = req.headers or {}
-                req.headers["Authorization"] = "Bearer " .. token
-
-                local ptype = type(req.params)
-                if ptype == "table" then
-                    if req.params.accessToken == nil then
-                        req.params.accessToken = token
-                    end
-                    local qs = build_query(req.params)
-                    req.params = qs ~= "" and qs or nil
-                elseif ptype == "string" then
-                    local params = req.params
-                    if params == nil or params == "" then
-                        req.params = "accessToken=" .. socket_url.escape(token)
-                    else
-                        -- Normalize to no leading '?' or '&' because Spore will add '?' itself.
-                        while params:sub(1, 1) == "?" or params:sub(1, 1) == "&" do
-                            params = params:sub(2)
-                        end
-                        if not params:find("accessToken=", 1, true) then
-                            if params == "" then
-                                req.params = "accessToken=" .. socket_url.escape(token)
-                            else
-                                req.params = params .. "&accessToken=" .. socket_url.escape(token)
-                            end
-                        else
-                            req.params = params
-                        end
-                    end
-                else
-                    req.params = "accessToken=" .. socket_url.escape(token)
-                end
-                logger.info(string.format("Legado3Auth after: path=%s params=%s", tostring(req.path), tostring(req.params)))
-            else
+            if not (loginSuccess == true and type(token) == 'string' and token ~= '') then
                 logger.warn('Legado3Auth', '登录失败', token or 'nil')
             end
         end
@@ -125,6 +89,15 @@ end
 
 function M:getLuaConfig(path)
     return LuaSettings:open(path)
+end
+
+function M:withToken(params)
+    if type(params) ~= "table" then return params end
+    local token = self:reader3Token(true)
+    if H.is_str(token) and token ~= "" and params.accessToken == nil then
+        params.accessToken = token
+    end
+    return params
 end
 
 function M:isNeedLogin(response)

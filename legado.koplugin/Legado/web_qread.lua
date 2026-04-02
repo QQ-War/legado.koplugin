@@ -58,9 +58,9 @@ end
 
 function M:_getBookshelfPage()
     return self:handleResponse(function()
-        return self.client:getBookshelfPage({
+        return self.client:getBookshelfPage(self:withToken({
             oldmd5 = "2025-09-28 08:50:11.020Z"
-        })
+        }))
     end, nil, {
       timeouts = {6, 10}
     }, 'getBookshelfPage')
@@ -75,10 +75,10 @@ function M:getBookshelfNew(callback)
     local page = ret.page or 1
 
     return self:handleResponse(function()
-        return self.client:getBookshelfNew({
+        return self.client:getBookshelfNew(self:withToken({
             md5 = md5,
             page = page,
-        })
+        }))
     end, callback, {
       timeouts = {8, 12}
     }, 'getBookshelf')
@@ -178,9 +178,9 @@ end
 
 function M:getBookshelf(callback)
     return self:handleResponse(function()
-        return self.client:getBookshelf({
+        return self.client:getBookshelf(self:withToken({
             version = '3.2.1'
-        })
+        }))
     end, callback, {
       timeouts = {8, 12}
     }, 'getBookshelf')

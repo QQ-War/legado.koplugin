@@ -61,10 +61,10 @@ end
 
 function M:getBookshelf(callback)
     return self:handleResponse(function()
-        return self.client:getBookshelf({
+        return self.client:getBookshelf(self:withToken({
             refresh = 0,
             v = os.time()
-        })
+        }))
     end, callback, {
       timeouts = {8, 12}
     }, 'getBookshelf')
