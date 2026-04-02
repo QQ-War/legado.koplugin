@@ -63,6 +63,7 @@ function M:getBookshelf(callback)
     return self:handleResponse(function()
         return self.client:getBookshelf(self:withToken({
             refresh = 0,
+            version = '1.0.0',
             v = os.time()
         }))
     end, callback, {

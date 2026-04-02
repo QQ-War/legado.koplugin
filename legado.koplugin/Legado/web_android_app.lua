@@ -44,8 +44,9 @@ function M:init()
         return 
     end
     local legado_spec = LegadoSpec[self.name]
-    -- base_url = 'http://eu.httpbin.org/'
-    self.client = Spore.new_from_lua(legado_spec, { base_url = self.settings.server_address .. '/' })
+    -- 去掉末尾斜杠，避免与 spec 中以 / 开头的路径产生双斜杠
+    local base_url = self.settings.server_address:gsub("/+$", "")
+    self.client = Spore.new_from_lua(legado_spec, { base_url = base_url })
 
     self._need_login = H.is_func(self.client.login) and (self.settings.reader3_un or "") ~= ""
  
@@ -72,7 +73,10 @@ function M:init()
         if true == self._need_login then
 
             local loginSuccess, token = self:_reader3Login()
-            if not (loginSuccess == true and type(token) == 'string' and token ~= '') then
+            if loginSuccess == true and type(token) == 'string' and token ~= '' then
+                req.headers = req.headers or {}
+                req.headers["Authorization"] = "Bearer " .. token
+            else
                 logger.warn('Legado3Auth', '登录失败', token or 'nil')
             end
         end

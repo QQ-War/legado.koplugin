@@ -179,7 +179,7 @@ end
 function M:getBookshelf(callback)
     return self:handleResponse(function()
         return self.client:getBookshelf(self:withToken({
-            version = '3.2.1'
+            version = '1.0.0'
         }))
     end, callback, {
       timeouts = {8, 12}
