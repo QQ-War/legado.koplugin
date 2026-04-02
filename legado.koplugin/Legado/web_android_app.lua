@@ -76,6 +76,10 @@ function M:init()
             if loginSuccess == true and type(token) == 'string' and token ~= '' then
                 req.headers = req.headers or {}
                 req.headers["Authorization"] = "Bearer " .. token
+                req.params = req.params or {}
+                if req.params.accessToken == nil then
+                    req.params.accessToken = token
+                end
             else
                 logger.warn('Legado3Auth', '登录失败', token or 'nil')
             end
