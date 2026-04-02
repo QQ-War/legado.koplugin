@@ -155,6 +155,10 @@ function M:handleResponse(requestFunc, callback, opts, logName, isRetry)
     end
   
     if isRetry ~= true and res.body.isSuccess == false and self:isNeedLogin(res.body) then
+        logger.err(string.format(
+            "Need login response: %s",
+            tostring(util.tableToString(res.body))
+        ))
         self:reader3Token(nil)
         self:_reader3Login()
         logger.err("Need login, refreshed session and retrying")
@@ -169,6 +173,11 @@ function M:handleResponse(requestFunc, callback, opts, logName, isRetry)
            end
           return res.body.data
     else
+        logger.err(string.format(
+            "Request failed: %s response=%s",
+            tostring(logName),
+            tostring(util.tableToString(res.body))
+        ))
         return nil, (res.body and res.body.errorMsg) and res.body.errorMsg or '出错'
     end
 end
