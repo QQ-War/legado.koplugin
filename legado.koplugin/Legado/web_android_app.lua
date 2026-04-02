@@ -18,6 +18,16 @@ local function safe_dump(value)
     return tostring(value)
 end
 
+local function build_query(params)
+    local parts = {}
+    for k, v in pairs(params) do
+        if v ~= nil then
+            table.insert(parts, socket_url.escape(tostring(k)) .. "=" .. socket_url.escape(tostring(v)))
+        end
+    end
+    return table.concat(parts, "&")
+end
+
 local M = {
     name = "legado_app",
     client = nil,
@@ -74,9 +84,22 @@ function M:init()
 
             local loginSuccess, token = self:_reader3Login()
             if loginSuccess == true and type(token) == 'string' and token ~= '' then
-                req.params = req.params or {}
-                if req.params.accessToken == nil then
-                    req.params.accessToken = token
+                local ptype = type(req.params)
+                if ptype == "table" then
+                    if req.params.accessToken == nil then
+                        req.params.accessToken = token
+                    end
+                    req.params = build_query(req.params)
+                elseif ptype == "string" then
+                    if not req.params:find("accessToken=", 1, true) then
+                        if req.params == "" then
+                            req.params = "accessToken=" .. socket_url.escape(token)
+                        else
+                            req.params = req.params .. "&accessToken=" .. socket_url.escape(token)
+                        end
+                    end
+                else
+                    req.params = "accessToken=" .. socket_url.escape(token)
                 end
             else
                 logger.warn('Legado3Auth', '登录失败', token or 'nil')
