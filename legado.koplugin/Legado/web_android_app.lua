@@ -157,7 +157,7 @@ function M:handleResponse(requestFunc, callback, opts, logName, isRetry)
     if isRetry ~= true and res.body.isSuccess == false and self:isNeedLogin(res.body) then
         logger.err(string.format(
             "Need login response: %s",
-            tostring(util.tableToString(res.body))
+            tostring(res.body)
         ))
         self:reader3Token(nil)
         self:_reader3Login()
@@ -176,7 +176,7 @@ function M:handleResponse(requestFunc, callback, opts, logName, isRetry)
         logger.err(string.format(
             "Request failed: %s response=%s",
             tostring(logName),
-            tostring(util.tableToString(res.body))
+            tostring(res.body)
         ))
         return nil, (res.body and res.body.errorMsg) and res.body.errorMsg or '出错'
     end

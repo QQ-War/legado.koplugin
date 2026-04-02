@@ -50,7 +50,7 @@ function M:reader3Login()
         return false,
             (res.body and res.body.errorMsg) and res.body.errorMsg or "服务器返回了无效的数据结构"
     end
-    logger.info("reader3Login response: " .. tostring(util.tableToString(res.body)))
+    logger.info("reader3Login response: " .. tostring(res.body))
     if not (H.is_tbl(res.body.data) and H.is_str(res.body.data.accessToken)) then
         return false, '获取 Token 失败'
     end
