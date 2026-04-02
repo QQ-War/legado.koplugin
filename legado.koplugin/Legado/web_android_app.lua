@@ -74,8 +74,6 @@ function M:init()
 
             local loginSuccess, token = self:_reader3Login()
             if loginSuccess == true and type(token) == 'string' and token ~= '' then
-                req.headers = req.headers or {}
-                req.headers["Authorization"] = "Bearer " .. token
                 req.params = req.params or {}
                 if req.params.accessToken == nil then
                     req.params.accessToken = token
