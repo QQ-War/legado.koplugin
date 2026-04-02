@@ -82,9 +82,9 @@ function M:saveBook(bookinfo, callback)
   
     return self:handleResponse(function()
         -- data=bookinfo
-        return self.client:saveBook({
-  
+        return self.client:saveBook(self:withToken({
             v = os.time(),
+            version = '1.0.0',
             name = bookinfo.name,
             author = bookinfo.author,
             bookUrl = bookinfo.bookUrl,
@@ -100,7 +100,7 @@ function M:saveBook(bookinfo, callback)
             totalChapterNum = bookinfo.totalChapterNum or 0,
             kind = bookinfo.kind or '',
             type = bookinfo.type or 0
-        })
+        }))
   
     end, callback, {
         timeouts = {10, 12}
@@ -114,9 +114,9 @@ function M:saveBook(bookinfo, callback)
     end
   
     return self:handleResponse(function()
-        return self.client:deleteBook({
-  
+        return self.client:deleteBook(self:withToken({
             v = os.time(),
+            version = '1.0.0',
             name = bookinfo.name,
             author = bookinfo.author,
             bookUrl = bookinfo.bookUrl,
@@ -132,7 +132,7 @@ function M:saveBook(bookinfo, callback)
             totalChapterNum = bookinfo.totalChapterNum or 0,
             kind = bookinfo.kind or '',
             type = bookinfo.type or 0
-        })
+        }))
     end, callback, {
         timeouts = {6, 8}
     }, 'deleteBook')
@@ -145,10 +145,11 @@ function M:saveBook(bookinfo, callback)
   
     local bookUrl = bookinfo.bookUrl
     return self:handleResponse(function()
-          return self.client:getChapterList({
+          return self.client:getChapterList(self:withToken({
               url = bookUrl,
+              version = '1.0.0',
               v = os.time()
-          })
+          }))
     end, callback, {
       timeouts = {10, 18}
   }, 'getChapterList')
@@ -165,11 +166,12 @@ function M:saveBook(bookinfo, callback)
   
     return self:handleResponse(function()
         -- data=string
-        return self.client:getBookContent({
+        return self.client:getBookContent(self:withToken({
             url = bookUrl,
             index = down_chapters_index,
+            version = '1.0.0',
             v = os.time()
-        })
+        }))
     end, callback, {
         timeouts = {18, 25}
     }, 'getBookContent')
@@ -185,12 +187,13 @@ function M:refreshBookContent(chapter, callback)
     end
     
     return self:handleResponse(function()
-        return self.client:getBookContent({
+        return self.client:getBookContent(self:withToken({
             url = bookUrl,
             index = down_chapters_index,
             refresh = 1,
+            version = '1.0.0',
             v = os.time()
-        })
+        }))
     end, callback, {
         timeouts = {10, 20}
     }, 'refreshBookContent')
@@ -203,7 +206,7 @@ function M:refreshBookContent(chapter, callback)
     local chapters_index = chapter.chapters_index
   
     return self:handleResponse(function()
-        return self.client:saveBookProgress({
+        return self.client:saveBookProgress(self:withToken({
             name = chapter.name,
             author = chapter.author or '',
             durChapterPos = chapter.durChapterPos or 0,
@@ -212,8 +215,9 @@ function M:refreshBookContent(chapter, callback)
             durChapterTitle = chapter.title or '',
             index = chapters_index,
             url = chapter.bookUrl,
+            version = '1.0.0',
             v = os.time()
-        })
+        }))
     end, callback, {
         timeouts = {3, 5}
     }, 'saveBookProgress')
@@ -303,10 +307,11 @@ end
 
 function M:getBookSourcesList(callback)
     return self:handleResponse(function()
-        return self.client:getBookSources({
+        return self.client:getBookSources(self:withToken({
             simple = 1,
+            version = '1.0.0',
             v = os.time()
-        })
+        }))
     end, callback, {
         timeouts = {20, 30},
     }, 'getBookSourcesList')
@@ -334,10 +339,11 @@ function M:_getBookSource(options, callback)
         return nil, '获取书源详情参数错误'
     end
     return self:handleResponse(function()
-        return self.client:getBookSource({
+        return self.client:getBookSource(self:withToken({
             bookSourceUrl = options.bookSourceUrl,
+            version = '1.0.0',
             v = os.time()
-        })
+        }))
     end, callback, {
         timeouts = {10, 15},
     }, 'getBookSource')
@@ -351,11 +357,13 @@ function M:exploreBook(options, callback)
     local page = options.page or 1
 
     return self:handleResponse(function()
-        return self.client:exploreBook({
+        return self.client:exploreBook(self:withToken({
             ruleFindUrl = options.ruleFindUrl,
             page = page,
             bookSourceUrl = options.bookSourceUrl,
-        })
+            version = '1.0.0',
+            v = os.time()
+        }))
     end, callback, {
         timeouts = {18, 30},
     }, 'exploreBook')
@@ -375,11 +383,12 @@ function M:getAvailableBookSource(options, callback)
     if not is_more_call then
         local ret, err_msg = self:handleResponse(function()
             -- data=bookinfos
-            return self.client:getAvailableBookSource({
+            return self.client:getAvailableBookSource(self:withToken({
                 refresh = 0,
                 url = bookUrl,
+                version = '1.0.0',
                 v = os.time()
-            })
+            }))
         end, callback, {
             timeouts = {30, 50},
         }, 'getAvailableBookSource')
@@ -398,13 +407,14 @@ function M:getAvailableBookSource(options, callback)
     end
     return self:handleResponse(function()
         -- data.list data.lastindex
-        return self.client:searchBookSource({
+        return self.client:searchBookSource(self:withToken({
             url = bookUrl,
             bookSourceGroup = '',
             lastIndex = last_index,
             searchSize = search_size,
+            version = '1.0.0',
             v = os.time()
-        })
+        }))
 
     end, callback, {
         timeouts = {70, 80},
@@ -421,12 +431,13 @@ function M:changeBookSource(new_book_source, callback)
 
     return self:handleResponse(function()
         -- data=bookinfo
-        return self.client:setBookSource({
+        return self.client:setBookSource(self:withToken({
             bookUrl = new_book_source.bookUrl,
             bookSourceUrl = new_book_source.bookSourceUrl,
             newUrl = new_book_source.newUrl,
+            version = '1.0.0',
             v = os.time()
-        })
+        }))
     end, callback, {
         timeouts = {25, 30},
     }, 'changeBookSource')
@@ -444,15 +455,16 @@ function M:searchBookSingle(options, callback)
 
     return self:handleResponse(function()
         -- data = bookinfolist
-        return self.client:searchBook({
+        return self.client:searchBook(self:withToken({
             key = search_text,
             bookSourceGroup = '',
             concurrentCount = concurrentCount,
             bookSourceUrl = bookSourceUrl,
             lastIndex = -1,
             page = 1,
+            version = '1.0.0',
             v = os.time()
-        })
+        }))
     end, callback, {
         timeouts = {20, 30},
     }, 'searchBookSingle')
@@ -470,14 +482,15 @@ function M:searchBookMulti(options, callback)
     
     return self:handleResponse(function()
         -- data.list data.lastindex
-        return self.client:searchBookMulti({
+        return self.client:searchBookMulti(self:withToken({
             key = search_text,
             bookSourceGroup = '',
             concurrentCount = concurrentCount,
             lastIndex = lastIndex,
             searchSize = searchSize,
+            version = '1.0.0',
             v = os.time()
-        })
+        }))
     end, callback, {
         timeouts = {60, 80},
     }, 'searchBookMulti')

@@ -59,7 +59,8 @@ end
 function M:_getBookshelfPage()
     return self:handleResponse(function()
         return self.client:getBookshelfPage(self:withToken({
-            oldmd5 = "2025-09-28 08:50:11.020Z"
+            oldmd5 = "2025-09-28 08:50:11.020Z",
+            version = '1.0.0',
         }))
     end, nil, {
       timeouts = {6, 10}
@@ -78,6 +79,7 @@ function M:getBookshelfNew(callback)
         return self.client:getBookshelfNew(self:withToken({
             md5 = md5,
             page = page,
+            version = '1.0.0',
         }))
     end, callback, {
       timeouts = {8, 12}
@@ -93,13 +95,14 @@ function M:getChapterListNew(bookinfo, callback)
     local bookSourceUrl = bookinfo.origin
     local bookname = bookinfo.name
     return self:handleResponse(function()
-          return self.client:getChapterListNew({
+          return self.client:getChapterListNew(self:withToken({
               bookSourceUrl = bookSourceUrl,
               url = bookUrl,
               needRefresh = 0,
               useReplaceRule = 1,
               bookname = bookname,
-          })
+              version = '1.0.0',
+          }))
     end, callback, {
       timeouts = {10, 18}
   }, 'getChapterList')
@@ -117,14 +120,15 @@ function M:getBookContentNew(chapter, callback)
 
   local ret, err_msg = self:handleResponse(function()
       -- data={rules, text}
-      return self.client:getBookContentNew({
+      return self.client:getBookContentNew(self:withToken({
           url = bookUrl,
           index = down_chapters_index,
           bookSourceUrl = bookSourceUrl,
           useReplaceRule = 1,
           bookname = "",
           type = 0,
-      })
+          version = '1.0.0',
+      }))
   end, callback, {
       timeouts = {18, 25}
   }, 'getBookContent')
@@ -136,9 +140,10 @@ function M:getBookContentNew(chapter, callback)
 end
 function M:_getBookSourcesPage()
     return self:handleResponse(function()
-        return self.client:getBookSourcesPage({
-            oldmd5 = "2025-09-28 08:50:11.020Z"
-        })
+        return self.client:getBookSourcesPage(self:withToken({
+            oldmd5 = "2025-09-28 08:50:11.020Z",
+            version = '1.0.0',
+        }))
     end, nil, {
       timeouts = {6, 10}
     }, 'getBookSourcesPage')
@@ -153,10 +158,11 @@ function M:getBookSourcesListNew(callback)
     local page = ret.page or 1
 
     return self:handleResponse(function()
-        return self.client:getBookSourcesNew({
+        return self.client:getBookSourcesNew(self:withToken({
             md5 = md5,
             page = page,
-        })
+            version = '1.0.0',
+        }))
     end, callback, {
       timeouts = {8, 12}
     }, 'getBookSourcesList')
@@ -168,9 +174,10 @@ function M:refreshBook(chapter, callback)
     end
     local bookUrl = chapter.bookUrl
     return self:handleResponse(function()
-        return self.client:refreshBook({
+        return self.client:refreshBook(self:withToken({
             bookurl = bookUrl,
-        })
+            version = '1.0.0',
+        }))
     end, callback, {
         timeouts = {10, 20}
     }, 'refreshBook')
@@ -195,10 +202,11 @@ function M:getChapterList(bookinfo, callback)
     local bookSourceUrl = bookinfo.origin
     local bookname = bookinfo.name
     return self:handleResponse(function()
-          return self.client:getChapterList({
+          return self.client:getChapterList(self:withToken({
               bookSourceUrl = bookSourceUrl,
               url = bookUrl,
-          })
+              version = '1.0.0',
+          }))
     end, callback, {
       timeouts = {10, 18}
   }, 'getChapterList')
@@ -216,12 +224,13 @@ function M:getBookContent(chapter, callback)
 
   return self:handleResponse(function()
       -- data={rules, text}
-      return self.client:getBookContent({
+      return self.client:getBookContent(self:withToken({
           url = bookUrl,
           index = down_chapters_index,
           bookSourceUrl = bookSourceUrl,
           type = 0,
-      })
+          version = '1.0.0',
+      }))
   end, callback, {
       timeouts = {18, 25}
   }, 'getBookContent')
@@ -238,7 +247,7 @@ function M:saveBook(bookinfo, callback)
   
     return self:handleResponse(function()
         -- data=bookinfo
-        return self.client:saveBook({
+        return self.client:saveBook(self:withToken({
             name = bookinfo.name,
             author = bookinfo.author,
             bookUrl = bookinfo.bookUrl,
@@ -253,8 +262,9 @@ function M:saveBook(bookinfo, callback)
             intro = bookinfo.intro or '',
             totalChapterNum = bookinfo.totalChapterNum or 0,
             kind = bookinfo.kind or '',
-            type = bookinfo.type or 0
-        })
+            type = bookinfo.type or 0,
+            version = '1.0.0',
+        }))
   
     end, nil, {
         timeouts = {10, 12}
@@ -267,7 +277,7 @@ function M:saveBook(bookinfo, callback)
     end
   
     return self:handleResponse(function()
-        return self.client:deleteBook({
+        return self.client:deleteBook(self:withToken({
             name = bookinfo.name,
             author = bookinfo.author,
             bookUrl = bookinfo.bookUrl,
@@ -282,8 +292,9 @@ function M:saveBook(bookinfo, callback)
             intro = bookinfo.intro or '',
             totalChapterNum = bookinfo.totalChapterNum or 0,
             kind = bookinfo.kind or '',
-            type = bookinfo.type or 0
-        })
+            type = bookinfo.type or 0,
+            version = '1.0.0',
+        }))
     end, callback, {
         timeouts = {6, 8}
     }, 'deleteBook')
@@ -291,9 +302,10 @@ function M:saveBook(bookinfo, callback)
 
 function M:getBookSourcesList(callback)
     return self:handleResponse(function()
-        return self.client:getBookSources({
+        return self.client:getBookSources(self:withToken({
             isall = 0,
-        })
+            version = '1.0.0',
+        }))
     end, callback, {
         timeouts = {20, 30},
     }, 'getBookSourcesList')
@@ -301,10 +313,11 @@ end
 
 function M:getBookSourcesExploreUrl(bookSourceUrl, callback)
     local ret, err_msg = self:handleResponse(function()
-        return self.client:getBookSourcesExploreUrl({
+        return self.client:getBookSourcesExploreUrl(self:withToken({
             bookSourceUrl = bookSourceUrl,
             need = nil,
-        })
+            version = '1.0.0',
+        }))
     end, nil, {
         timeouts = {12, 18},
     }, 'getBookSourcesExploreUrl')
@@ -327,9 +340,10 @@ function M:getAvailableBookSource2(options, callback)
     end
     local bookUrl = options.book_url
     local ret, err_msg = self:handleResponse(function()
-        return self.client:urlsaveBook({
+        return self.client:urlsaveBook(self:withToken({
             url = bookUrl,
-        })
+            version = '1.0.0',
+        }))
     end, nil, {
         timeouts = {15, 20},
     }, 'getAvailableBookSource')
@@ -380,11 +394,12 @@ function M:searchBookSingle(options, callback)
 
     return self:handleResponse(function()
         -- data = bookinfolist
-        return self.client:searchBook({
+        return self.client:searchBook(self:withToken({
             key = search_text,
             bookSourceUrl = bookSourceUrl,
             page = 1,
-        })
+            version = '1.0.0',
+        }))
     end, callback, {
         timeouts = {20, 30},
     }, 'searchBookSingle')
@@ -400,11 +415,12 @@ function M:changeBookSource(new_book_source, callback)
 
     return self:handleResponse(function()
         -- data=bookinfo
-        return self.client:setBookSource({
+        return self.client:setBookSource(self:withToken({
             bookUrl = new_book_source.bookUrl,
             bookSourceUrl = new_book_source.bookSourceUrl,
             newUrl = new_book_source.newUrl,
-        })
+            version = '1.0.0',
+        }))
     end, callback, {
         timeouts = {25, 30},
     }, 'changeBookSource')
@@ -417,10 +433,11 @@ function M:refreshBookContent(chapter, callback)
     local bookUrl = chapter.bookUrl
     local chapters_index = chapter.chapters_index
     return self:handleResponse(function()
-        return self.client:fetchBookContent({
+        return self.client:fetchBookContent(self:withToken({
             url = bookUrl,
             index = chapters_index,
-        })
+            version = '1.0.0',
+        }))
     end, callback, {
         timeouts = {10, 20}
     }, 'refreshBookContent')
@@ -436,12 +453,13 @@ function M:saveBookProgress(chapter, callback)
     -- {"isSuccess":true,"errorMsg":"success","data":",0,1,2,3,4,5,6,7,8,9"}
     -- {"isSuccess":true,"errorMsg":"success"}
     return self:handleResponse(function()
-        return self.client:saveBookProgress({
+        return self.client:saveBookProgress(self:withToken({
             index = chapters_index,
             url = bookUrl,
             title = title,
             pos = chapter.durChapterPos or 0, --pos 0.2
-        })
+            version = '1.0.0',
+        }))
     end, callback, {
         timeouts = {3, 5}
     }, 'saveBookProgress')
@@ -778,11 +796,12 @@ function M:exploreBook(options, callback)
     local page = options.page or 1
 
     return self:handleResponse(function()
-        return self.client:exploreBook({
+        return self.client:exploreBook(self:withToken({
             ruleFindUrl = options.ruleFindUrl,
             page = page,
             bookSourceUrl = options.bookSourceUrl,
-        })
+            version = '1.0.0',
+        }))
     end, callback, {
         timeouts = {18, 30},
     }, 'exploreBook')
