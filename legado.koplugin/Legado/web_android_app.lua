@@ -73,6 +73,10 @@ function M:init()
 
             local loginSuccess, token = self:_reader3Login()
             if loginSuccess == true and type(token) == 'string' and token ~= '' then
+                -- Match ReadApp behavior: always set Authorization header and also append accessToken in query.
+                req.headers = req.headers or {}
+                req.headers["Authorization"] = "Bearer " .. token
+
                 local ptype = type(req.params)
                 if ptype == "table" then
                     if req.params.accessToken == nil then
@@ -93,6 +97,8 @@ function M:init()
                             else
                                 req.params = "?" .. params .. "&accessToken=" .. socket_url.escape(token)
                             end
+                        elseif params:sub(1, 1) ~= "?" then
+                            req.params = "?" .. params
                         end
                     end
                 else
