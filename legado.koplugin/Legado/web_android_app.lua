@@ -83,26 +83,28 @@ function M:init()
                         req.params.accessToken = token
                     end
                     local qs = build_query(req.params)
-                    req.params = (qs ~= "" and ("?" .. qs)) or ""
+                    req.params = qs ~= "" and qs or nil
                 elseif ptype == "string" then
                     local params = req.params
                     if params == nil or params == "" then
-                        req.params = "?accessToken=" .. socket_url.escape(token)
+                        req.params = "accessToken=" .. socket_url.escape(token)
                     else
+                        -- Normalize to no leading '?' or '&' because Spore will add '?' itself.
+                        while params:sub(1, 1) == "?" or params:sub(1, 1) == "&" do
+                            params = params:sub(2)
+                        end
                         if not params:find("accessToken=", 1, true) then
-                            if params:sub(1, 1) == "?" then
-                                req.params = params .. "&accessToken=" .. socket_url.escape(token)
-                            elseif params:sub(1, 1) == "&" then
-                                req.params = "?" .. params:sub(2) .. "&accessToken=" .. socket_url.escape(token)
+                            if params == "" then
+                                req.params = "accessToken=" .. socket_url.escape(token)
                             else
-                                req.params = "?" .. params .. "&accessToken=" .. socket_url.escape(token)
+                                req.params = params .. "&accessToken=" .. socket_url.escape(token)
                             end
-                        elseif params:sub(1, 1) ~= "?" then
-                            req.params = "?" .. params
+                        else
+                            req.params = params
                         end
                     end
                 else
-                    req.params = "?accessToken=" .. socket_url.escape(token)
+                    req.params = "accessToken=" .. socket_url.escape(token)
                 end
             else
                 logger.warn('Legado3Auth', '登录失败', token or 'nil')
