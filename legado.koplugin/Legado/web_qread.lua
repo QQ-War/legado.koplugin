@@ -58,7 +58,12 @@ function M:reader3Login()
         return false,
             (res.body and res.body.errorMsg) and res.body.errorMsg or "服务器返回了无效的数据结构"
     end
-    logger.info("qreadLogin response: " .. safe_dump(res.body))
+    logger.info(string.format(
+        "qreadLogin response: isSuccess=%s errorMsg=%s dataType=%s",
+        tostring(res.body.isSuccess),
+        tostring(res.body.errorMsg),
+        tostring(type(res.body.data))
+    ))
     if not (H.is_tbl(res.body.data) and H.is_str(res.body.data.accessToken)) then
         return false, '获取 Token 失败'
     end
