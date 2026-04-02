@@ -89,17 +89,25 @@ function M:init()
                     if req.params.accessToken == nil then
                         req.params.accessToken = token
                     end
-                    req.params = build_query(req.params)
+                    local qs = build_query(req.params)
+                    req.params = (qs ~= "" and ("?" .. qs)) or ""
                 elseif ptype == "string" then
-                    if not req.params:find("accessToken=", 1, true) then
-                        if req.params == "" then
-                            req.params = "accessToken=" .. socket_url.escape(token)
-                        else
-                            req.params = req.params .. "&accessToken=" .. socket_url.escape(token)
+                    local params = req.params
+                    if params == nil or params == "" then
+                        req.params = "?accessToken=" .. socket_url.escape(token)
+                    else
+                        if not params:find("accessToken=", 1, true) then
+                            if params:sub(1, 1) == "?" then
+                                req.params = params .. "&accessToken=" .. socket_url.escape(token)
+                            elseif params:sub(1, 1) == "&" then
+                                req.params = "?" .. params:sub(2) .. "&accessToken=" .. socket_url.escape(token)
+                            else
+                                req.params = "?" .. params .. "&accessToken=" .. socket_url.escape(token)
+                            end
                         end
                     end
                 else
-                    req.params = "accessToken=" .. socket_url.escape(token)
+                    req.params = "?accessToken=" .. socket_url.escape(token)
                 end
             else
                 logger.warn('Legado3Auth', '登录失败', token or 'nil')
