@@ -7,20 +7,21 @@ local legado_app = {
             path = "/getChapterList",
             method = "GET",
             required_params = {"url"},
-            optional_params = {"v", "refresh","bookSource","bookSourceUrl"},
+            optional_params = {"v", "refresh","bookSource","bookSourceUrl", "accessToken", "version"},
             expected_status = {200}
         },
         getBookshelf = {
             path = "/getBookshelf",
             method = "GET",
             required_params = {"v", "refresh"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         getBookContent = {
             path = "/getBookContent",
             method = "GET",
             required_params = {"url", "index"},
-            optional_params = {"v", "cache", "refresh"},
+            optional_params = {"v", "cache", "refresh", "accessToken", "version"},
             expected_status = {200}
         },
         saveBookProgress = {
@@ -30,7 +31,7 @@ local legado_app = {
                                "durChapterTitle", "index", "url"},
             payload = {"name", "author", "durChapterPos", "durChapterIndex", "durChapterTime", "durChapterTitle",
                        "index", "url"},
-            optional_params = {"v"},
+            optional_params = {"v", "accessToken", "version"},
             expected_status = {200}
         },
         saveBook = {
@@ -38,7 +39,7 @@ local legado_app = {
             method = "POST",
             required_params = {"name", "author", "bookUrl", "origin", "originName", "originOrder"},
             optional_params = {"v", "durChapterIndex", "durChapterPos", "durChapterTime", "durChapterTitle",
-                               "wordCount", "intro", "totalChapterNum", "kind", "type"},
+                               "wordCount", "intro", "totalChapterNum", "kind", "type", "accessToken", "version"},
             payload = {"name", "author", "bookUrl", "origin", "originName", "originOrder", "durChapterIndex",
                        "durChapterPos", "durChapterTime", "durChapterTitle", "wordCount", "intro", "totalChapterNum",
                        "kind", "type"},
@@ -50,7 +51,7 @@ local legado_app = {
             method = "POST",
             required_params = {"name", "author", "bookUrl", "origin", "originName", "originOrder"},
             optional_params = {"v", "durChapterIndex", "durChapterPos", "durChapterTime", "durChapterTitle",
-                               "wordCount", "intro", "totalChapterNum", "kind", "type"},
+                               "wordCount", "intro", "totalChapterNum", "kind", "type", "accessToken", "version"},
             payload = {"name", "author", "bookUrl", "origin", "originName", "originOrder", "durChapterIndex",
                        "durChapterPos", "durChapterTime", "durChapterTitle", "wordCount", "intro", "totalChapterNum",
                        "kind", "type"},
@@ -61,12 +62,14 @@ local legado_app = {
             path = "/getTxtTocRules",
             method = "GET",
             required_params = {"v"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         getReplaceRules ={
             path = "/getReplaceRules",
             method = "GET",
             required_params = {"v"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         refreshToc = {
@@ -74,14 +77,14 @@ local legado_app = {
             method = "POST",
             required_params = {"url"},
             payload = {"url"},
-            optional_params = {"v"},
+            optional_params = {"v", "accessToken", "version"},
             expected_status = {200}
         },
         getChapterPackage = {
             path = "/chapterPackage",
             method = "GET",
             required_params = {"url", "index"},
-            optional_params = {"v", "bookSourceUrl", "type"},
+            optional_params = {"v", "bookSourceUrl", "type", "accessToken", "version"},
             expected_status = {200}
         },
     }
@@ -103,13 +106,14 @@ local reader3 = {
             path = "/getUserConfig",
             method = "GET",
             required_params = {"v"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         getChapterList = {
             path = "/getChapterList",
             method = "GET",
             required_params = {"url"},
-            optional_params = {"v", "refresh","bookSource","bookSourceUrl"},
+            optional_params = {"v", "refresh","bookSource","bookSourceUrl", "accessToken", "version"},
             expected_status = {200}
         },
         getBookshelf = {
@@ -123,13 +127,14 @@ local reader3 = {
             path = "getShelfBook",
             method = "GET",
             required_params = {"v", "url"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         getBookContent = {
             path = "/getBookContent",
             method = "GET",
             required_params = {"url", "index"},
-            optional_params = {"v", "cache", "refresh"},
+            optional_params = {"v", "cache", "refresh", "accessToken", "version"},
             expected_status = {200}
         },
         saveBookProgress = {
@@ -139,14 +144,14 @@ local reader3 = {
                                "durChapterTitle", "index", "url"},
             payload = {"name", "author", "durChapterPos", "durChapterIndex", "durChapterTime", "durChapterTitle",
                        "index", "url"},
-            optional_params = {"v"},
+            optional_params = {"v", "accessToken", "version"},
             expected_status = {200}
         },
         getAvailableBookSource = {
             path = "/getAvailableBookSource",
             method = "POST",
             required_params = {"url", "refresh"},
-            optional_params = {"v"},
+            optional_params = {"v", "accessToken", "version"},
             payload = {"url", "refresh"},
             expected_status = {200}
         },
@@ -154,7 +159,7 @@ local reader3 = {
             path = "/setBookSource",
             method = "POST",
             required_params = {"bookUrl", "bookSourceUrl", "newUrl"},
-            optional_params = {"v"},
+            optional_params = {"v", "accessToken", "version"},
             payload = {"bookUrl", "bookSourceUrl", "newUrl"},
             expected_status = {200}
         },
@@ -162,26 +167,28 @@ local reader3 = {
             path = "/searchBookSource",
             method = "GET",
             required_params = {"url", "bookSourceGroup"},
-            optional_params = {"v", "searchSize", "lastIndex"},
+            optional_params = {"v", "searchSize", "lastIndex", "accessToken", "version"},
             expected_status = {200}
         },
         searchBookMulti = {
             path = "/searchBookMulti",
             method = "GET",
             required_params = {"v", "key", "bookSourceGroup", "concurrentCount", "lastIndex"},
-            optional_params = {"searchSize", "bookSourceUrl"},
+            optional_params = {"searchSize", "bookSourceUrl", "accessToken", "version"},
             expected_status = {200}
         },
         getBookSources = {
             path = "/getBookSources",
             method = "GET",
             required_params = {"v", "simple"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         searchBook = {
             path = "/searchBook",
             method = "GET",
             required_params = {"v", "key", "bookSourceUrl", "bookSourceGroup", "concurrentCount", "lastIndex", "page"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         getBookInfo = {
@@ -189,7 +196,7 @@ local reader3 = {
             method = "POST",
             required_params = {"bookSourceUrl", "url"},
             payload = {"bookSourceUrl", "url"},
-            optional_params = {"v"},
+            optional_params = {"v", "accessToken", "version"},
             expected_status = {200}
         },
         saveBook = {
@@ -197,7 +204,7 @@ local reader3 = {
             method = "POST",
             required_params = {"name", "author", "bookUrl", "origin", "originName", "originOrder"},
             optional_params = {"v", "durChapterIndex", "durChapterPos", "durChapterTime", "durChapterTitle",
-                               "wordCount", "intro", "totalChapterNum", "kind", "type"},
+                               "wordCount", "intro", "totalChapterNum", "kind", "type", "accessToken", "version"},
             payload = {"name", "author", "bookUrl", "origin", "originName", "originOrder", "durChapterIndex",
                        "durChapterPos", "durChapterTime", "durChapterTitle", "wordCount", "intro", "totalChapterNum",
                        "kind", "type"},
@@ -209,7 +216,7 @@ local reader3 = {
             method = "POST",
             required_params = {"name", "author", "bookUrl", "origin", "originName", "originOrder"},
             optional_params = {"v", "durChapterIndex", "durChapterPos", "durChapterTime", "durChapterTitle",
-                               "wordCount", "intro", "totalChapterNum", "kind", "type"},
+                               "wordCount", "intro", "totalChapterNum", "kind", "type", "accessToken", "version"},
             payload = {"name", "author", "bookUrl", "origin", "originName", "originOrder", "durChapterIndex",
                        "durChapterPos", "durChapterTime", "durChapterTitle", "wordCount", "intro", "totalChapterNum",
                        "kind", "type"},
@@ -220,12 +227,14 @@ local reader3 = {
             path = "/getTxtTocRules",
             method = "GET",
             required_params = {"v"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         getReplaceRules ={
             path = "/getReplaceRules",
             method = "GET",
             required_params = {"v"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         exploreBook =  {
@@ -233,7 +242,7 @@ local reader3 = {
             method = "POST",
             required_params = {"bookSourceUrl", "ruleFindUrl", "page"},
             payload = {"bookSourceUrl", "ruleFindUrl", "page"},
-            optional_params = {"v"},
+            optional_params = {"v", "accessToken", "version"},
             expected_status = {200}
         },
         getBookSource = {
@@ -241,14 +250,14 @@ local reader3 = {
             method = "POST",
             required_params = {"bookSourceUrl"},
             payload = {"bookSourceUrl"},
-            optional_params = {"v"},
+            optional_params = {"v", "accessToken", "version"},
             expected_status = {200}
         },
         getChapterPackage = {
             path = "/chapterPackage",
             method = "GET",
             required_params = {"url", "index"},
-            optional_params = {"v", "bookSourceUrl", "type"},
+            optional_params = {"v", "bookSourceUrl", "type", "accessToken", "version"},
             expected_status = {200}
         },
     }
@@ -271,32 +280,35 @@ local qread = {
             method = "POST",
             -- oldmd5 2025-09-28 08:50:11.020Z
             required_params = {"oldmd5"}, 
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         getgroupNew = {
             path = "/getgroupNew",
             method = "POST",
             required_params = {"md5"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         getBookshelfNew = {
             path = "/getBookshelfNew",
             method = "POST",
             required_params = {"md5", "page"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         getChapterListNew = {
             path = "/getChapterListNew",
             method = "POST",
             required_params = {"needRefresh", "useReplaceRule", "bookSourceUrl", "url"},
-            optional_params = {"bookname"},
+            optional_params = {"bookname", "accessToken", "version"},
             expected_status = {200}
         },
         getBookContentNew = {
             path = "/getBookContentNew",
             method = "POST",
             required_params = {"index", "url", "bookSourceUrl", "useReplaceRule"},
-            optional_params = {"bookname", "type"},
+            optional_params = {"bookname", "type", "accessToken", "version"},
             expected_status = {200}
         },
         getBookSourcesPage = {
@@ -304,18 +316,21 @@ local qread = {
             method = "POST",
             -- is md5
             required_params = {"oldmd5"}, 
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         getBookSourcesNew = {
             path = "/getBookSourcesNew",
             method = "POST",
             required_params = {"md5", "page"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         refreshBook = {
             path = "/refreshBook",
             method = "POST",
             required_params = {"bookurl"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         getBookshelf = {
@@ -329,6 +344,7 @@ local qread = {
             path = "/getChapterList",
             method = "POST",
             required_params = {"bookSourceUrl", "url"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         getBookContent = {
@@ -336,7 +352,7 @@ local qread = {
             method = "POST",
             required_params = {"index", "url", "bookSourceUrl"},
             -- type 0 使用缓存 1 强制刷新
-            optional_params = {"type"},
+            optional_params = {"type", "accessToken", "version"},
             expected_status = {200}
         },
         getBookSources = {
@@ -344,13 +360,14 @@ local qread = {
             method = "POST",
             -- 1 所有 0 已开启
             required_params = {"isall"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         searchBook = {
             path = "/searchBook",
             method = "POST",
             required_params = {"key", "bookSourceUrl"},
-            optional_params = {"page"},
+            optional_params = {"page", "accessToken", "version"},
             expected_status = {200}
         },
         -- 查找书籍可用书源
@@ -358,13 +375,14 @@ local qread = {
             path = "/urlsaveBook",
             method = "POST",
             required_params = {"url"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         setBookSource = {
             path = "/setBookSource",
             method = "POST",
             required_params = {"bookUrl", "bookSourceUrl", "newUrl"},
-            optional_params = {"v"},
+            optional_params = {"v", "accessToken", "version"},
             payload = {"bookUrl", "bookSourceUrl", "newUrl"},
             expected_status = {200}
         },
@@ -373,7 +391,7 @@ local qread = {
             method = "POST",
             required_params = {"name", "author", "bookUrl", "origin", "originName", "originOrder"},
             optional_params = {"durChapterIndex", "durChapterPos", "durChapterTime", "durChapterTitle",
-                               "wordCount", "intro", "totalChapterNum", "kind", "type"},
+                               "wordCount", "intro", "totalChapterNum", "kind", "type", "accessToken", "version"},
             payload = {"name", "author", "bookUrl", "origin", "originName", "originOrder", "durChapterIndex",
                        "durChapterPos", "durChapterTime", "durChapterTitle", "wordCount", "intro", "totalChapterNum",
                        "kind", "type"},
@@ -385,7 +403,7 @@ local qread = {
             method = "POST",
             required_params = {"name", "author", "bookUrl", "origin", "originName", "originOrder"},
             optional_params = {"durChapterIndex", "durChapterPos", "durChapterTime", "durChapterTitle",
-                               "wordCount", "intro", "totalChapterNum", "kind", "type"},
+                               "wordCount", "intro", "totalChapterNum", "kind", "type", "accessToken", "version"},
             payload = {"name", "author", "bookUrl", "origin", "originName", "originOrder", "durChapterIndex",
                        "durChapterPos", "durChapterTime", "durChapterTitle", "wordCount", "intro", "totalChapterNum",
                        "kind", "type"},
@@ -396,18 +414,21 @@ local qread = {
             path = "/saveBookProgress",
             method = "POST",
             required_params = {"index", "url", "title", "pos"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         fetchBookContent = {
             path = "/fetchBookContent",
             method = "POST",
             required_params = {"url", "index"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         getBookinfo = {
             path = "/getBookinfo2",
             method = "POST",
             required_params = {"url"},
+            optional_params = {"accessToken", "version"},
             expected_status = {200}
         },
         exploreBook =  {
@@ -415,7 +436,7 @@ local qread = {
             method = "POST",
             required_params = {"bookSourceUrl", "ruleFindUrl", "page"},
             payload = {"bookSourceUrl", "ruleFindUrl", "page"},
-            optional_params = {"v"},
+            optional_params = {"v", "accessToken", "version"},
             expected_status = {200}
         },
         getBookSourcesExploreUrl = {
@@ -424,14 +445,14 @@ local qread = {
             -- need = 1 刷新?
             required_params = {"bookSourceUrl"},
             payload = {"bookSourceUrl","need"},
-            optional_params = {"v", "need"},
+            optional_params = {"v", "need", "accessToken", "version"},
             expected_status = {200}
         },
         getChapterPackage = {
             path = "/chapterPackage",
             method = "GET",
             required_params = {"url", "index"},
-            optional_params = {"v", "bookSourceUrl", "type"},
+            optional_params = {"v", "bookSourceUrl", "type", "accessToken", "version"},
             expected_status = {200}
         },
     }
