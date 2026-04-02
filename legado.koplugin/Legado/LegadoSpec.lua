@@ -116,6 +116,7 @@ local reader3 = {
             path = "/getBookshelf",
             method = "GET",
             required_params = {"v", "refresh"},
+            optional_params = {"version", "accessToken"},
             expected_status = {200}
         },
         getShelfBook = {
@@ -321,6 +322,7 @@ local qread = {
             path = "/getBookshelf",
             method = "POST",
             required_params = {"version"},
+            optional_params = {"v", "accessToken"},
             expected_status = {200}
         },
         getChapterList = {
