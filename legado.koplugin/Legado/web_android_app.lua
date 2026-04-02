@@ -6,6 +6,17 @@ local LuaSettings = require("luasettings")
 local socket_url = require("socket.url")
 local Spore = require("Spore")
 local H = require("Legado/Helper")
+local JSON = require("json")
+
+local function safe_dump(value)
+    if type(value) == "table" then
+        local ok, encoded = pcall(JSON.encode, value)
+        if ok and encoded then
+            return encoded
+        end
+    end
+    return tostring(value)
+end
 
 local M = {
     name = "legado_app",
@@ -157,7 +168,7 @@ function M:handleResponse(requestFunc, callback, opts, logName, isRetry)
     if isRetry ~= true and res.body.isSuccess == false and self:isNeedLogin(res.body) then
         logger.err(string.format(
             "Need login response: %s",
-            tostring(res.body)
+            safe_dump(res.body)
         ))
         self:reader3Token(nil)
         self:_reader3Login()
@@ -176,7 +187,7 @@ function M:handleResponse(requestFunc, callback, opts, logName, isRetry)
         logger.err(string.format(
             "Request failed: %s response=%s",
             tostring(logName),
-            tostring(res.body)
+            safe_dump(res.body)
         ))
         return nil, (res.body and res.body.errorMsg) and res.body.errorMsg or '出错'
     end
